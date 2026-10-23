@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   pull_request:
@@ -6,9 +6,60 @@ on:
     branches: [main]
 
 jobs:
-  quality-and-tests:
+  rubocop:
+    name: RuboCop
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libpq-dev
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Run RuboCop
+        run: bundle exec rubocop -f github
 
+  brakeman:
+    name: Brakeman
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libpq-dev
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Run Brakeman
+        run: bundle exec brakeman --no-pager
+
+  bundler-audit:
+    name: bundler-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libpq-dev
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Audit dependencies
+        run: bundle exec bundler-audit check --update
+
+  rspec:
+    name: RSpec
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:18
@@ -23,36 +74,21 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-
     env:
       RAILS_ENV: test
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/finpay_api_test
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libpq-dev
-
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
-
-      - name: RuboCop
-        run: bundle exec rubocop -f github
-
-      - name: Brakeman
-        run: bundle exec brakeman --no-pager
-
-      - name: bundler-audit
-        run: bundle exec bundler-audit check --update
-
       - name: Prepare test database
         run: bundle exec rails db:test:prepare
-
-      - name: RSpec
+      - name: Run RSpec
         run: bundle exec rspec
