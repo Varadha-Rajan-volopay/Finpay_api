@@ -24,7 +24,7 @@ RSpec.describe Company, type: :model do
     end
 
     it "rejects an invalid subdomain format" do
-      ["Acme", "ab", "1acme", "acme-name", "acme.example"].each do |subdomain|
+      [ "Acme", "ab", "1acme", "acme-name", "acme.example" ].each do |subdomain|
         company = Company.new(name: "Acme Corp", subdomain: subdomain)
 
         expect(company).not_to be_valid, "Expected #{subdomain.inspect} to be invalid"

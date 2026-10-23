@@ -65,5 +65,23 @@ RSpec.describe Companies::Provision do
 
       expect(Company.exists?(subdomain: subdomain)).to be(false)
     end
+    it "leaves no company or tenant schema when tenant creation fails" do
+      allow(connection).to receive(:schema_exists?).and_call_original
+
+      allow(Apartment::Tenant).to receive(:create).with(subdomain) do
+          connection.execute(
+              "CREATE SCHEMA #{connection.quote_table_name(subdomain)}"
+          )
+
+          raise StandardError, "Tenant creation failed"
+      end
+
+      expect {
+          described_class.call(name: name, subdomain: subdomain)
+      }.to raise_error(StandardError, "Tenant creation failed")
+
+      expect(Company.exists?(subdomain: subdomain)).to be(false)
+      expect(connection.schema_exists?(subdomain)).to be(false)
+    end
   end
 end
