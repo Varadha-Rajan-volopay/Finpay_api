@@ -1,6 +1,6 @@
-require "rbconfig"
 #!/usr/bin/env ruby
 require "fileutils"
+require "rbconfig"
 
 APP_ROOT = File.expand_path("..", __dir__)
 
@@ -10,17 +10,6 @@ end
 
 FileUtils.chdir APP_ROOT do
   puts "== Loading local environment =="
-
-  if File.exist?(".env")
-    File.foreach(".env") do |line|
-      next if line.strip.empty? || line.lstrip.start_with?("#")
-
-      key, value = line.strip.split("=", 2)
-      next unless key && value
-
-      ENV[key.strip] ||= value.strip.delete_prefix('"').delete_suffix('"').delete_prefix("'").delete_suffix("'")
-    end
-  end
 
   puts "== Installing dependencies =="
   system("bundle check") || system!("bundle install")
