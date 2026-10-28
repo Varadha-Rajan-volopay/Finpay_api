@@ -1,31 +1,42 @@
+
 require "rails_helper"
 
 RSpec.describe "Tenant migrations" do
   let(:subdomain) { "migration_spec_tenant" }
 
   after do
-    Apartment::Tenant.drop(subdomain) if
-      ActiveRecord::Base.connection.schema_exists?(subdomain)
+    Apartment::Tenant.reset
+
+    if ActiveRecord::Base.connection.schema_exists?(subdomain)
+      Apartment::Tenant.drop(subdomain)
+    end
   end
 
-  it "runs migrations and creates tenant tables" do
+  it "runs tenant migrations and creates the users table" do
     company = Company.create!(
       name: "Migration Spec Company",
       subdomain: subdomain
     )
 
-    Apartment::Tenant.create(company.subdomain)
+    # Create an empty tenant schema without copying the public schema.
+    ActiveRecord::Base.connection.execute(
+      "CREATE SCHEMA #{ActiveRecord::Base.connection.quote_table_name(company.subdomain)}"
+    )
+
+    Companies::TenantMigration.run!(company.subdomain)
 
     Apartment::Tenant.switch(company.subdomain) do
-      migration_context = ActiveRecord::MigrationContext.new(
-        Rails.root.join("db/migrate")
-      )
+      connection = ActiveRecord::Base.connection
 
-      migration_context.migrate
+      expect(connection.data_source_exists?("users")).to be(true)
 
       expect(
-        ActiveRecord::Base.connection.data_source_exists?("expenses")
-      ).to be(true)
+        connection.data_source_exists?("companies")
+      ).to be(false)
+
+      expect(
+        connection.data_source_exists?("expenses")
+      ).to be(false)
     end
   end
 end
