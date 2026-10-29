@@ -32,6 +32,8 @@ gem "thruster", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
 
+gem "ros-apartment", require: "apartment"
+
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"
 
@@ -47,4 +49,15 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+  gem "dotenv-rails"
+  gem "rspec-rails"
+  gem "factory_bot_rails"
+  gem "faker"
+  gem "simplecov", require: false
 end
+
+gem "devise", "~> 5.0"
+gem "devise-jwt", "~> 0.13.0"
+gem "pundit", "~> 2.5"
+
+gem "fiddle", "~> 1.1"
