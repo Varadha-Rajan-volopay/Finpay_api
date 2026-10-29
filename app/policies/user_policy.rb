@@ -1,12 +1,6 @@
 class UserPolicy < ApplicationPolicy
-  def index?
-    same_company? && user.admin?
-  end
-
   def show?
-    same_company? && (
-      user.admin? || user.id == record.id
-    )
+    same_company? && (user.admin? || user.id == record.id)
   end
 
   def update?
@@ -17,6 +11,10 @@ class UserPolicy < ApplicationPolicy
     same_company? && user.admin?
   end
 
+  def index?
+    same_company? && user.admin?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
@@ -24,10 +22,7 @@ class UserPolicy < ApplicationPolicy
       if user.admin?
         scope.where(company_id: user.company_id)
       else
-        scope.where(
-          id: user.id,
-          company_id: user.company_id
-        )
+        scope.where(id: user.id, company_id: user.company_id)
       end
     end
   end

@@ -1,14 +1,15 @@
 class Users::SessionsController < Devise::SessionsController
   respond_to :json
 
-  skip_before_action :authenticate_user!
-  skip_before_action :verify_user_company
+  skip_before_action :authenticate_user!, raise: false
+  skip_before_action :verify_user_company, raise: false
   skip_around_action :with_tenant
 
   skip_before_action :verify_signed_out_user,
                      only: :destroy,
                      raise: false
 
+  # POST /auth/login
   def create
     company = Company.find_by(
       subdomain: params.dig(:company, :subdomain)
@@ -22,20 +23,33 @@ class Users::SessionsController < Devise::SessionsController
     Apartment::Tenant.switch(company.subdomain) do
       self.resource = warden.authenticate(auth_options)
 
-      unless resource && resource.company_id.to_s == company.id.to_s
+      unless resource &&
+             resource.company_id.to_s == company.id.to_s
         render_invalid_credentials
         return
       end
 
+      # Sign in without storing a session.
       sign_in(resource_name, resource, store: false)
 
+      # Generate the access JWT directly.
+      access_token, _payload =
+        Warden::JWTAuth::UserEncoder.new.call(
+          resource,
+          :user,
+          nil
+        )
+
+      # Generate the refresh token.
       _refresh_record, refresh_token =
         RefreshToken.issue!(
           company_id: resource.company_id,
           user_id: resource.id
         )
 
-      access_token = response.headers["Authorization"]&.split(" ")&.last
+      # Include the JWT in the response header as well.
+      response.headers["Authorization"] =
+        "Bearer #{access_token}"
 
       render json: {
         message: "Login successful",
@@ -53,12 +67,14 @@ class Users::SessionsController < Devise::SessionsController
     Apartment::Tenant.reset
   end
 
+  # DELETE /auth/logout
   def destroy
     token = request.headers["Authorization"]&.split(" ")&.last
 
     unless token.present?
-      render json: { error: "Missing token" },
-             status: :unauthorized
+      render json: {
+        error: "Missing token"
+      }, status: :unauthorized
       return
     end
 
@@ -73,11 +89,13 @@ class Users::SessionsController < Devise::SessionsController
     exp = payload["exp"]
 
     unless jti.present? && exp.present?
-      render json: { error: "Invalid token" },
-             status: :unauthorized
+      render json: {
+        error: "Invalid token"
+      }, status: :unauthorized
       return
     end
 
+    # Revoke the access token.
     JwtDenylist.find_or_create_by!(jti: jti) do |record|
       record.exp = Time.at(exp)
     end
@@ -98,9 +116,11 @@ class Users::SessionsController < Devise::SessionsController
     render json: {
       message: "Logout successful"
     }, status: :ok
+
   rescue JWT::DecodeError
-    render json: { error: "Invalid token" },
-           status: :unauthorized
+    render json: {
+      error: "Invalid token"
+    }, status: :unauthorized
   end
 
   private

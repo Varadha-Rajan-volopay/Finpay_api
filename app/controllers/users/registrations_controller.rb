@@ -1,9 +1,9 @@
 class Users::RegistrationsController < Devise::RegistrationsController
   respond_to :json
 
-  skip_before_action :authenticate_user!
-  skip_before_action :verify_user_company
-  skip_around_action :with_tenant
+  skip_before_action :authenticate_user!,raise: false
+  skip_before_action :verify_user_company,raise: false
+  skip_around_action :with_tenant,raise: false
 
   def create
     user = nil

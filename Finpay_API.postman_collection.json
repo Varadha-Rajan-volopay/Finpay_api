@@ -1,0 +1,125 @@
+
+{
+  "info": {
+    "name": "Finpay API",
+    "description": "Postman collection for Finpay API authentication endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"company\": {\n    \"name\": \"Acme Corporation\",\n    \"subdomain\": \"acme\"\n  },\n  \"user\": {\n    \"name\": \"Admin User\",\n    \"email\": \"admin.acme@example.com\",\n    \"password\": \"Password@123\",\n    \"password_confirmation\": \"Password@123\",\n    \"role\": \"admin\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/register",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"company\": {\n    \"subdomain\": \"acme\"\n  },\n  \"user\": {\n    \"email\": \"admin.acme@example.com\",\n    \"password\": \"Password@123\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "Refresh Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh_token\": \"PASTE_REFRESH_TOKEN_FROM_LOGIN\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/refresh",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "refresh"]
+        }
+      }
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer PASTE_ACCESS_TOKEN_FROM_LOGIN"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh_token\": \"PASTE_REFRESH_TOKEN_FROM_LOGIN\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/logout",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "logout"]
+        }
+      }
+    },
+    {
+      "name": "Current User",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer PASTE_ACCESS_TOKEN_HERE"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/auth/me",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "me"]
+        }
+      }
+    }
+  ]
+}
