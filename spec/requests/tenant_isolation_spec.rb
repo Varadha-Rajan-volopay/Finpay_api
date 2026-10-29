@@ -99,4 +99,60 @@ RSpec.describe "Tenant isolation", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+  describe "expense data isolation" do
+    let!(:expense_a) do
+      Apartment::Tenant.switch(company_a.subdomain) do
+        category = create(:category, name: "Tenant A Category")
+
+        create(
+          :expense,
+          user: user_a,
+          category: category,
+          title: "Tenant A confidential expense"
+        )
+      end
+    end
+ 
+    let!(:user_b) do
+      Apartment::Tenant.switch(company_b.subdomain) do
+        create(
+          :user,
+          company: company_b,
+          email: "userb#{SecureRandom.hex(3)}@example.com",
+          password: "password123",
+          password_confirmation: "password123",
+          role: :member
+        )
+      end
+    end
+
+    it "keeps expenses isolated between tenant schemas" do
+      Apartment::Tenant.switch(company_a.subdomain) do
+        expect(
+          Expense.find_by(title: "Tenant A confidential expense")
+        ).to be_present
+      end
+
+      Apartment::Tenant.switch(company_b.subdomain) do
+        expect(
+          Expense.find_by(title: "Tenant A confidential expense")
+        ).to be_nil
+ 
+        category = create(:category, name: "Tenant B Category")
+
+        create(
+          :expense,
+          user: user_b,
+          category: category,
+          title: "Tenant B confidential expense"
+        )
+      end
+
+      Apartment::Tenant.switch(company_a.subdomain) do
+        expect(
+          Expense.find_by(title: "Tenant B confidential expense")
+        ).to be_nil
+      end
+    end
+  end
 end

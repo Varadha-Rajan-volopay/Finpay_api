@@ -59,5 +59,7 @@ end
 gem "devise", "~> 5.0"
 gem "devise-jwt", "~> 0.13.0"
 gem "pundit", "~> 2.5"
-
+gem "strong_migrations"
 gem "fiddle", "~> 1.1"
+
+gem "alba", "~> 4.0"
