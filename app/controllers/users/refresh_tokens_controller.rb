@@ -1,7 +1,7 @@
 class Users::RefreshTokensController < ApplicationController
-  skip_before_action :authenticate_user!
-  skip_before_action :verify_user_company
-  skip_around_action :with_tenant
+  skip_before_action :authenticate_user!, raise: false
+  skip_before_action :verify_user_company, raise: false
+  skip_around_action :with_tenant, raise: false
 
   def create
     raw_refresh_token = params[:refresh_token]

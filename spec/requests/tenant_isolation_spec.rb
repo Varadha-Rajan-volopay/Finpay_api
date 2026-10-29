@@ -65,6 +65,9 @@ RSpec.describe "Tenant isolation", type: :request do
         "X-Company-Id" => company_b.id.to_s
       }
 
+      puts "STATUS: #{response.status}"
+      puts "BODY: #{response.body}"
+
       expect(response).to have_http_status(:ok)
       expect(
         response.parsed_body.dig("user", "company_id").to_s
