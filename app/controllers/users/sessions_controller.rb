@@ -27,7 +27,7 @@ class Users::SessionsController < Devise::SessionsController
         return
       end
 
-      sign_in(resource_name, resource,store: false)
+      sign_in(resource_name, resource, store: false)
 
       _refresh_record, refresh_token =
         RefreshToken.issue!(

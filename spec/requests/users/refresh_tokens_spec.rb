@@ -53,7 +53,7 @@ RSpec.describe "Users::RefreshTokens", type: :request do
       revoked_at: revoked_at
     )
 
-    [record, raw_token]
+    [ record, raw_token ]
   end
 
   describe "POST /auth/refresh" do

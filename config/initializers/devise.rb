@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require Rails.root.join("app/lib/api_auth_failure")
 # Assuming you have not yet modified this file, each configuration option below
 # is set to its default value. Note that some are commented out while others

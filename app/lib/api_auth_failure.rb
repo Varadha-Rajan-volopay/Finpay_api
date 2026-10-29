@@ -11,7 +11,7 @@ class ApiAuthFailure
         "Content-Type" => "application/json",
         "Content-Length" => body.bytesize.to_s
       },
-      [body]
+      [ body ]
     ]
   end
 end

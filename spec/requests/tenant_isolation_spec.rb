@@ -24,7 +24,7 @@ RSpec.describe "Tenant isolation", type: :request do
   end
 
   before do
-    [company_a, company_b].each do |company|
+    [ company_a, company_b ].each do |company|
       connection = ActiveRecord::Base.connection
 
       connection.execute(
@@ -40,7 +40,7 @@ RSpec.describe "Tenant isolation", type: :request do
   after do
     Apartment::Tenant.reset
 
-    [company_a, company_b].each do |company|
+    [ company_a, company_b ].each do |company|
       next unless company&.persisted?
 
       if ActiveRecord::Base.connection.schema_exists?(company.subdomain)
