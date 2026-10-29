@@ -76,6 +76,30 @@ RSpec.describe "Users::Sessions", type: :request do
       expect(response.parsed_body.dig("user", "email")).to eq(email)
     end
 
+    it "rejects an expired JWT" do
+      expired_payload = {
+        "sub" => "999",
+        "scp" => "user",
+        "company_id" => company.id,
+        "role" => "member",
+        "jti" => SecureRandom.uuid,
+        "iat" => 10.minutes.ago.to_i,
+        "exp" => 1.minute.ago.to_i
+      }
+
+      expired_token = JWT.encode(
+        expired_payload,
+        Rails.application.secret_key_base,
+        "HS256"
+      )
+
+      get "/auth/me", headers: {
+        "Authorization" => "Bearer #{expired_token}"
+      }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
     it "rejects invalid credentials" do
       post "/auth/login", params: {
         company: {
@@ -140,6 +164,11 @@ RSpec.describe "Users::Sessions", type: :request do
       expect(
         JwtDenylist.exists?(jti: payload["jti"])
       ).to be(true)
+      get "/auth/me", headers: {
+        "Authorization" => "Bearer #{token}"
+      }
+
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 end

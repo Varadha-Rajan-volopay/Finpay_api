@@ -19,9 +19,6 @@ RSpec.describe "Users::Registrations", type: :request do
     it "registers a company and its admin user" do
       post "/auth/register", params: registration_params
 
-      puts "STATUS: #{response.status}"
-      puts "BODY: #{response.body}"
-
       expect(response).to have_http_status(:created)
 
       body = response.parsed_body

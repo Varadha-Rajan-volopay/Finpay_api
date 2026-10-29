@@ -20,6 +20,7 @@ Apartment.configure do |config|
   config.excluded_models = %w[
     Company
     JwtDenylist
+    RefreshToken
   ]
   config.tenant_names = -> { Company.pluck(:subdomain) }
 

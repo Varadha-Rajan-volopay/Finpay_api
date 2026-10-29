@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-
+require Rails.root.join("app/lib/api_auth_failure")
 # Assuming you have not yet modified this file, each configuration option below
 # is set to its default value. Note that some are commented out while others
 # are not: uncommented lines are intended to protect your configuration from
@@ -144,7 +144,9 @@ Devise.setup do |config|
   # Default is 0.days, meaning the user cannot access the website without
   # confirming their account.
   # config.allow_unconfirmed_access_for = 2.days
-
+  config.warden do |warden_config|
+    warden_config.failure_app = ApiAuthFailure
+  end
   # A period that the user is allowed to confirm their account before their
   # token becomes invalid. For example, if set to 3.days, the user can confirm
   # their account within 3 days after the mail was sent, but on the fourth day
