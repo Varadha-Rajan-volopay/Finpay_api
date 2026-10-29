@@ -1,5 +1,6 @@
 class User < ApplicationRecord
   belongs_to :company
+  has_many :expenses, dependent: :restrict_with_error
 
   before_create :generate_jti
 

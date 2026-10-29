@@ -2,6 +2,7 @@
 require "rails_helper"
 
 RSpec.describe "Users::Sessions", type: :request do
+  self.use_transactional_tests = false
   let(:company) do
     create(
       :company,
