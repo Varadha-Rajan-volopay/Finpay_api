@@ -2,6 +2,8 @@
 require "rails_helper"
 
 RSpec.describe "Tenant isolation", type: :request do
+  self.use_transactional_tests = false
+
   let(:company_a) do
     create(:company, subdomain: "tenant_a_#{SecureRandom.hex(3)}")
   end
@@ -30,6 +32,9 @@ RSpec.describe "Tenant isolation", type: :request do
       connection.execute(
         "CREATE SCHEMA #{connection.quote_table_name(company.subdomain)}"
       )
+
+      puts "Open transactions before tenant migration: " \
+           "#{connection.open_transactions}"
 
       Companies::TenantMigration.run!(company.subdomain)
     end
@@ -71,7 +76,7 @@ RSpec.describe "Tenant isolation", type: :request do
       expect(response).to have_http_status(:ok)
       expect(
         response.parsed_body.dig("user", "company_id").to_s
-        ).to eq(company_a.id.to_s)
+      ).to eq(company_a.id.to_s)
     end
 
     it "rejects a token whose company claim does not match the user" do
@@ -99,6 +104,7 @@ RSpec.describe "Tenant isolation", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
   describe "expense data isolation" do
     let!(:expense_a) do
       Apartment::Tenant.switch(company_a.subdomain) do
@@ -112,7 +118,7 @@ RSpec.describe "Tenant isolation", type: :request do
         )
       end
     end
- 
+
     let!(:user_b) do
       Apartment::Tenant.switch(company_b.subdomain) do
         create(
@@ -137,7 +143,7 @@ RSpec.describe "Tenant isolation", type: :request do
         expect(
           Expense.find_by(title: "Tenant A confidential expense")
         ).to be_nil
- 
+
         category = create(:category, name: "Tenant B Category")
 
         create(

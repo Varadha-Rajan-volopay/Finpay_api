@@ -1,6 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Users::Registrations", type: :request do
+  self.use_transactional_tests = false
   describe "POST /auth/register" do
     let(:registration_params) do
       {

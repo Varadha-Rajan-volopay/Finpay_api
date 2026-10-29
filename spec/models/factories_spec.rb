@@ -1,6 +1,9 @@
+
 require "rails_helper"
 
 RSpec.describe "FactoryBot factories" do
+  self.use_transactional_tests = false
+
   it "has valid factories" do
     tenant_name = "factory_lint_#{SecureRandom.hex(4)}"
     connection = ActiveRecord::Base.connection

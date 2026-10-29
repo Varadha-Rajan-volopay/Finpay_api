@@ -1,4 +1,6 @@
 class ValidateExpenseTrackingForeignKeys < ActiveRecord::Migration[8.1]
+  disable_ddl_transaction!
+
   def up
     validate_foreign_key :expenses, :users
     validate_foreign_key :expenses, :categories
