@@ -54,6 +54,7 @@ group :development, :test do
   gem "factory_bot_rails"
   gem "faker"
   gem "simplecov", require: false
+  gem "bullet"
 end
 
 gem "devise", "~> 5.0"
@@ -63,3 +64,5 @@ gem "strong_migrations"
 gem "fiddle", "~> 1.1"
 
 gem "alba", "~> 4.0"
+
+gem "kaminari", "~> 1.3"
