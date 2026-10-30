@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_113514) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_120823) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -43,6 +43,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_113514) do
     t.index ["category_id"], name: "index_expenses_on_category_id"
     t.index ["incurred_on"], name: "index_expenses_on_incurred_on"
     t.index ["status"], name: "index_expenses_on_status"
+    t.index ["user_id", "status", "incurred_on"], name: "index_expenses_on_user_status_incurred_on"
     t.index ["user_id"], name: "index_expenses_on_user_id"
     t.check_constraint "amount_cents > 0", name: "expenses_amount_cents_positive"
     t.check_constraint "currency::text ~ '^[A-Z]{3}$'::text", name: "expenses_currency_format"
