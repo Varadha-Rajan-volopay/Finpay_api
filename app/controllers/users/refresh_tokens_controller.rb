@@ -1,3 +1,4 @@
+
 class Users::RefreshTokensController < ApplicationController
   skip_before_action :authenticate_user!, raise: false
   skip_before_action :verify_user_company, raise: false
@@ -16,7 +17,7 @@ class Users::RefreshTokensController < ApplicationController
       token_digest: RefreshToken.digest(raw_refresh_token)
     )
 
-    unless refresh_record&.active?
+    unless refresh_record
       render json: { error: "Invalid or expired refresh token" },
              status: :unauthorized
       return
@@ -31,45 +32,76 @@ class Users::RefreshTokensController < ApplicationController
     end
 
     Apartment::Tenant.switch(company.subdomain) do
-      user = User.find_by(
-        id: refresh_record.user_id,
-        company_id: company.id
-      )
+      refresh_record.with_lock do
+        if refresh_record.revoked_at.present?
+          revoke_other_active_tokens(refresh_record)
 
-      unless user
-        render json: { error: "User not found in this company" },
-               status: :unauthorized
-        return
-      end
+          render json: { error: "Refresh token reuse detected" },
+                 status: :unauthorized
+          next
+        end
 
-      access_token, = Warden::JWTAuth::UserEncoder.new.call(
-        user,
-        :user,
-        nil
-      )
+        if refresh_record.expires_at <= Time.current
+          render json: { error: "Invalid or expired refresh token" },
+                 status: :unauthorized
+          next
+        end
 
-      RefreshToken.transaction do
-        refresh_record.revoke!
+        user = User.find_by(
+          id: refresh_record.user_id,
+          company_id: company.id
+        )
 
-        _new_record, new_refresh_token =
-          RefreshToken.issue!(
-            company_id: company.id,
-            user_id: user.id
-          )
+        unless user
+          render json: { error: "User not found in this company" },
+                 status: :unauthorized
+          next
+        end
 
-        render json: {
-          access_token: access_token,
-          refresh_token: new_refresh_token,
-          user: {
-            id: user.id,
-            email: user.email,
-            company_id: user.company_id,
-            role: user.role
-          }
-        }, status: :ok
+        access_token, = Warden::JWTAuth::UserEncoder.new.call(
+          user,
+          :user,
+          nil
+        )
+
+        RefreshToken.transaction do
+          refresh_record.revoke!
+
+          _new_record, new_refresh_token =
+            RefreshToken.issue!(
+              company_id: company.id,
+              user_id: user.id
+            )
+
+          render json: {
+            access_token: access_token,
+            refresh_token: new_refresh_token,
+            user: {
+              id: user.id,
+              email: user.email,
+              company_id: user.company_id,
+              role: user.role
+            }
+          }, status: :ok
+        end
       end
     end
   ensure
     Apartment::Tenant.reset
+  end
+
+  private
+
+  def revoke_other_active_tokens(refresh_record)
+    RefreshToken.where(
+      company_id: refresh_record.company_id,
+      user_id: refresh_record.user_id,
+      revoked_at: nil
+    ).where(
+      "expires_at > ?", Time.current
+    ).update_all(
+      revoked_at: Time.current,
+      updated_at: Time.current
+    )
   end
 end
