@@ -35,6 +35,24 @@ class ExpensePolicy < ApplicationPolicy
     same_user? || user.admin?
   end
 
+  # Workflow permissions
+
+  def approve?
+    user.present? && user.admin? && !same_user?
+  end
+
+  def reject?
+    user.present? && user.admin?
+  end
+
+  def reimburse?
+    user.present? && user.admin?
+  end
+
+  def archive?
+    user.present? && user.admin?
+  end
+
   private
 
   def same_user?

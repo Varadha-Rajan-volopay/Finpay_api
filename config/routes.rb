@@ -25,4 +25,12 @@ Rails.application.routes.draw do
   get "auth/me", to: "users/me#show"
 
   resources :expenses, only: %i[index show create update destroy]
+  resources :expenses, only: %i[index show create update destroy] do
+    member do
+      post :approve
+      post :reject
+      post :reimburse
+      post :archive
+    end
+  end
 end

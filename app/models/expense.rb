@@ -1,17 +1,36 @@
 
 class Expense < ApplicationRecord
+  include AASM
+
   belongs_to :user
   belongs_to :category
 
+  has_many :reimbursement_idempotency_records, dependent: :destroy
   has_many :receipts, dependent: :destroy
 
-  enum :status, {
-    pending: "pending",
-    approved: "approved",
-    rejected: "rejected",
-    reimbursed: "reimbursed",
-    archived: "archived"
-  }, validate: true
+  aasm column: :status, create_scopes: false do
+    state :pending, initial: true
+    state :approved
+    state :rejected
+    state :reimbursed
+    state :archived
+
+    event :approve do
+      transitions from: :pending, to: :approved
+    end
+
+    event :reject do
+      transitions from: :pending, to: :rejected
+    end
+
+    event :reimburse do
+      transitions from: :approved, to: :reimbursed
+    end
+
+    event :archive do
+      transitions from: :reimbursed, to: :archived
+    end
+  end
 
   CURRENCIES = %w[INR USD EUR].freeze
 

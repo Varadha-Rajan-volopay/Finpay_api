@@ -1,6 +1,30 @@
 require "rails_helper"
 
 RSpec.describe Expense, type: :model do
+    self.use_transactional_tests = false
+
+  around do |example|
+    subdomain = "expense_spec#{SecureRandom.hex(6)}"
+    company = nil
+
+    begin
+      Companies::Provision.call(
+        name: "Expense Model Test Company",
+        subdomain: subdomain
+      ) do |provisioned_company|
+        company = provisioned_company
+        example.run
+      end
+    ensure
+      Apartment::Tenant.reset
+
+      if ActiveRecord::Base.connection.schema_exists?(subdomain)
+        Apartment::Tenant.drop(subdomain)
+      end
+
+      company&.delete
+    end
+  end
   describe "Money rules" do
     describe ".amount_cents_from" do
       it "converts a decimal amount into minor units" do

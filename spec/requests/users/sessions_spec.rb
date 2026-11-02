@@ -156,9 +156,11 @@ RSpec.describe "Users::Sessions", type: :request do
         algorithm: "HS256"
       )
 
-      delete "/auth/logout", headers: {
-        "Authorization" => "Bearer #{token}"
-      }
+      Apartment::Tenant.switch(company.subdomain) do
+        delete "/auth/logout", headers: {
+          "Authorization" => "Bearer #{token}"
+        }
+      end
 
       expect(response).to have_http_status(:ok)
 

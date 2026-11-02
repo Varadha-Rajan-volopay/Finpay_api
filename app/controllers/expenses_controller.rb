@@ -2,8 +2,16 @@ class ExpensesController < ApplicationController
   after_action :verify_authorized, except: :index
   after_action :verify_policy_scoped, only: :index
 
-  before_action :set_expense, only: %i[show update destroy]
-
+  before_action :set_expense,
+                only: %i[
+                  show
+                  update
+                  destroy
+                  approve
+                  reject
+                  reimburse
+                  archive
+                ]
   def index
     scope = policy_scope(Expense).includes(:category)
 
@@ -71,6 +79,33 @@ class ExpensesController < ApplicationController
     end
   end
 
+  def approve
+    perform_workflow_action(:approve)
+  end
+
+  def reject
+    perform_workflow_action(:reject)
+  end
+
+  def reimburse
+    authorize @expense
+
+    idempotency_key = request.headers["Idempotency-Key"]
+
+    result = ReimbursementIdempotencyService.call(
+      expense: @expense,
+      actor: current_user,
+      idempotency_key: idempotency_key
+    )
+
+    render json: result.value[:body],
+           status: result.value[:status]
+  end
+
+  def archive
+    perform_workflow_action(:archive)
+  end
+
   private
 
   def set_expense
@@ -97,5 +132,24 @@ class ExpensesController < ApplicationController
       :pagination,
       :cursor
     )
+  end
+
+  def perform_workflow_action(action)
+    authorize @expense
+
+    result = ExpenseWorkflowService.call(
+      expense: @expense,
+      actor: current_user,
+      action: action
+    )
+
+    if result.success?
+      render json: ExpenseSerializer.new(@expense.reload).serialize,
+            status: :ok
+    else
+      render json: {
+        errors: result.errors
+      }, status: :unprocessable_entity
+    end
   end
 end
