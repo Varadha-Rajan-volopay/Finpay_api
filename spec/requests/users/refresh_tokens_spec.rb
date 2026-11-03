@@ -2,6 +2,7 @@
 require "rails_helper"
 
 RSpec.describe "Users::RefreshTokens", type: :request do
+  self.use_transactional_tests = false
   let(:company) do
     create(:company, subdomain: "refresh#{SecureRandom.hex(3)}")
   end
