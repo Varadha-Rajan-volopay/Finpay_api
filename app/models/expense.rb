@@ -2,6 +2,8 @@
 class Expense < ApplicationRecord
   include AASM
 
+  after_create_commit :enqueue_creation_audit
+
   belongs_to :user
   belongs_to :category
 
@@ -115,4 +117,17 @@ class Expense < ApplicationRecord
   end
 
   private_class_method :validate_currency!
+
+  private
+
+  def enqueue_creation_audit
+    AuditLogWorker.perform_async(
+      user.company_id,
+      id,
+      user_id,
+      "create",
+      "new",
+      status
+    )
+  end
 end

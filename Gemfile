@@ -69,3 +69,5 @@ gem "alba", "~> 4.0"
 gem "kaminari", "~> 1.3"
 
 gem "aasm", "~> 6.0"
+
+gem "sidekiq-cron", "~> 2.4"
