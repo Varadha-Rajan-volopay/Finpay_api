@@ -66,7 +66,10 @@ RSpec.describe Companies::Provision do
 
       expect {
         described_class.call(name: name, subdomain: subdomain)
-      }.to raise_error(ArgumentError, /already exists/)
+      }.to raise_error(
+        Companies::Provision::TenantSchemaAlreadyExists,
+        /already exists/
+      )
 
       expect(Company.exists?(subdomain: subdomain)).to be(false)
       expect(connection.schema_exists?(subdomain)).to be(true)

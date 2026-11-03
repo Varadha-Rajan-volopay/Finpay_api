@@ -1,10 +1,14 @@
 module Companies
   class Provision
+    class TenantSchemaAlreadyExists < StandardError
+    end
+
     def self.call(name:, subdomain:)
       connection = ActiveRecord::Base.connection
 
       if connection.schema_exists?(subdomain)
-        raise ArgumentError, "Tenant schema already exists: #{subdomain}"
+        raise TenantSchemaAlreadyExists,
+              "Tenant schema already exists: #{subdomain}"
       end
 
       company = nil
