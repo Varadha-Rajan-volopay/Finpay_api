@@ -61,3 +61,5 @@ gem "devise-jwt", "~> 0.13.0"
 gem "pundit", "~> 2.5"
 
 gem "fiddle", "~> 1.1"
+
+gem "sidekiq", "~> 8.1"
