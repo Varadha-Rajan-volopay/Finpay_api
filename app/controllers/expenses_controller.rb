@@ -80,11 +80,11 @@ class ExpensesController < ApplicationController
   end
 
   def approve
-    perform_workflow_action(:approve)
+    perform_idempotent_workflow_action(:approve)
   end
 
   def reject
-    perform_workflow_action(:reject)
+    perform_idempotent_workflow_action(:reject)
   end
 
   def reimburse
@@ -132,6 +132,26 @@ class ExpensesController < ApplicationController
       :pagination,
       :cursor
     )
+  end
+
+  def perform_idempotent_workflow_action(action)
+    authorize @expense
+
+    result = ExpenseWorkflowIdempotencyService.call(
+      expense: @expense,
+      actor: current_user,
+      action: action,
+      idempotency_key: request.headers["Idempotency-Key"]
+    )
+
+    if result.success?
+      render json: result.value[:body],
+            status: result.value[:status]
+    else
+      render json: {
+        errors: result.errors
+      }, status: :unprocessable_entity
+    end
   end
 
   def perform_workflow_action(action)

@@ -597,7 +597,9 @@ RSpec.describe "Expenses", type: :request do
         expense = create_expense(user: user_a)
 
         post "/expenses/#{expense.id}/approve",
-             headers: auth_headers(admin_a)
+            headers: auth_headers(admin_a).merge(
+              "Idempotency-Key" => SecureRandom.uuid
+        )
 
         expect(response).to have_http_status(:ok)
 
@@ -638,7 +640,9 @@ RSpec.describe "Expenses", type: :request do
         expense = create_expense(user: user_a)
 
         post "/expenses/#{expense.id}/reject",
-             headers: auth_headers(admin_a)
+             headers: auth_headers(admin_a).merge(
+              "Idempotency-Key" => SecureRandom.uuid
+        )
 
         expect(response).to have_http_status(:ok)
 
