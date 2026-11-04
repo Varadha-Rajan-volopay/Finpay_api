@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ExpenseSerializer
   include Alba::Resource
 
@@ -13,10 +15,10 @@ class ExpenseSerializer
              :updated_at
 
   attribute :amount_display do |expense|
-    expense.amount_display
+    ExpensePresenter.new(expense).amount_display
   end
 
   attribute :category_name do |expense|
-    expense.category.name
+    ExpensePresenter.new(expense).category_name
   end
 end

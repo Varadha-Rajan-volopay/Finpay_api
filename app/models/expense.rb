@@ -1,7 +1,9 @@
+# frozen_string_literal: true
 
 class Expense < ApplicationRecord
   include AASM
 
+  before_validation :assign_reference_number, on: :create
   after_create_commit :enqueue_creation_audit
 
   belongs_to :user
@@ -57,14 +59,6 @@ class Expense < ApplicationRecord
 
   delegate :name, to: :category, prefix: true
 
-  # Returns the amount in major currency units as a decimal string.
-  # Example: 1050 cents -> "10.50"
-  def amount_display
-    whole_units, minor_units = amount_cents.divmod(100)
-
-    "#{whole_units}.#{minor_units.to_s.rjust(2, '0')}"
-  end
-
   # Converts a user-entered decimal amount into integer minor units.
   # User input with more than 2 decimal places is rejected, not rounded.
   # Example: "10.50" INR -> 1050 cents
@@ -119,6 +113,12 @@ class Expense < ApplicationRecord
   private_class_method :validate_currency!
 
   private
+
+  def assign_reference_number
+    return unless has_attribute?(:reference_number)
+
+    self.reference_number ||= "EXP-#{SecureRandom.hex(6).upcase}"
+  end
 
   def enqueue_creation_audit
     AuditLogWorker.perform_async(

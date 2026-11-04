@@ -445,7 +445,7 @@ RSpec.describe "Expenses", type: :request do
       get "/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok)
-      expect(decoded_response_body["id"]).to eq(expense.id)
+      expect(expense_data_from_body(decoded_response_body)["id"]).to eq(expense.id)
     end
 
     it "does not allow a member to view another member's expense" do
@@ -487,7 +487,7 @@ RSpec.describe "Expenses", type: :request do
 
       expect(response).to have_http_status(:created)
 
-      body = decoded_response_body
+      body = expense_data_from_body(decoded_response_body)
 
       expect(body["title"]).to eq("Office supplies")
       expect(body["user_id"]).to eq(user_a.id)
@@ -512,7 +512,15 @@ RSpec.describe "Expenses", type: :request do
            headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:unprocessable_entity)
-      expect(decoded_response_body).to have_key("errors")
+      expect(decoded_response_body).to have_key("error")
+
+      expect(decoded_response_body["error"]["code"]).to eq(
+        "validation_failed"
+      )
+
+      expect(decoded_response_body["error"]["details"]).to include(
+        "Title can't be blank"
+      )
     end
   end
 
@@ -530,7 +538,7 @@ RSpec.describe "Expenses", type: :request do
             headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok)
-      expect(decoded_response_body["title"]).to eq("Updated lunch")
+      expect(expense_data_from_body(decoded_response_body)["title"]).to eq("Updated lunch")
     end
 
     it "does not allow a member to update another member's expense" do
@@ -684,7 +692,15 @@ RSpec.describe "Expenses", type: :request do
              headers: auth_headers(admin_a)
 
         expect(response).to have_http_status(:bad_request)
-        expect(decoded_response_body["errors"]).to include(
+        expect(decoded_response_body.dig("error", "code")).to eq(
+          "reimbursement_failed"
+        )
+
+        expect(decoded_response_body.dig("error", "message")).to eq(
+          "Idempotency-Key header is required"
+        )
+
+        expect(decoded_response_body.dig("error", "details")).to include(
           "Idempotency-Key header is required"
         )
 

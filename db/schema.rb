@@ -82,6 +82,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_120823) do
     t.index ["token_digest"], name: "index_refresh_tokens_on_token_digest", unique: true
   end
 
+  create_table "users", force: :cascade do |t|
+    t.string "email", default: "", null: false
+    t.string "encrypted_password", default: "", null: false
+    t.bigint "company_id", null: false
+    t.integer "role", default: 1, null: false
+    t.string "jti", null: false
+    t.string "reset_password_token"
+    t.datetime "reset_password_sent_at"
+    t.datetime "remember_created_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["company_id"], name: "index_users_on_company_id"
+    t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["jti"], name: "index_users_on_jti", unique: true
+    t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+  end
+
   add_foreign_key "expenses", "categories"
+  add_foreign_key "expenses", "users"
   add_foreign_key "receipts", "expenses"
+  add_foreign_key "users", "companies"
 end
