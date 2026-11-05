@@ -46,7 +46,8 @@ RSpec.describe "Day 6 background workers" do
           member.id,
           "create",
           "new",
-          "pending"
+          "pending",
+          expense.created_at.iso8601(6)
         ]
 
         expect {
@@ -60,8 +61,12 @@ RSpec.describe "Day 6 background workers" do
       end
     end
 
-    it "raises when the tenant does not exist and resets tenant context" do
+    it "logs and skips when the tenant does not exist" do
       original_tenant = Apartment::Tenant.current
+
+      expect(Rails.logger).to receive(:warn).with(
+        "TenantWorker: Company not found for tenant_id=-1; skipping job"
+      )
 
       expect {
         described_class.new.perform(
@@ -70,13 +75,39 @@ RSpec.describe "Day 6 background workers" do
           1,
           "create",
           "new",
-          "pending"
+          "pending",
+          Time.current.iso8601(6)
         )
-      }.to raise_error(ActiveRecord::RecordNotFound)
+      }.not_to raise_error
 
       expect(Apartment::Tenant.current).to eq(original_tenant)
     end
+    it "allows legitimate repeated audit events with different timestamps" do
+      with_worker_tenant do |company, member, _admin, expense|
+        base_args = [
+          company.id,
+          expense.id,
+          member.id,
+          "create",
+          "new",
+          "pending"
+        ]
+
+        first_timestamp = 1.minute.ago.iso8601(6)
+        second_timestamp = Time.current.iso8601(6)
+
+        expect {
+          described_class.new.perform(*base_args, first_timestamp)
+          described_class.new.perform(*base_args, second_timestamp)
+        }.to change {
+          Apartment::Tenant.switch(company.subdomain) do
+            ActivityLog.count
+          end
+        }.by(2)
+      end
+    end
   end
+
 
   describe ReceiptProcessorWorker do
     it "processes a receipt and skips it when run again" do
@@ -102,24 +133,47 @@ RSpec.describe "Day 6 background workers" do
       end
     end
 
-    it "marks the receipt failed and re-raises a processing error" do
+    it "skips processing when the receipt does not exist" do
+      with_worker_tenant do |company, _member, _admin, _expense|
+        expect(Rails.logger).to receive(:warn).with(
+          "ReceiptProcessorWorker: Receipt not found for receipt_id=999999; skipping job"
+        )
+
+        expect {
+          described_class.new.perform(company.id, 999999)
+        }.not_to raise_error
+      end
+    end
+
+    it "re-raises a processing error without immediately marking the receipt failed" do
       with_worker_tenant do |company, _member, _admin, expense|
         receipt = create(:receipt, expense: expense)
-        update_calls = 0
+
 
         allow_any_instance_of(Receipt)
           .to receive(:update!)
-          .and_wrap_original do |original, *args, **kwargs|
-            update_calls += 1
+          .and_call_original
 
-            raise StandardError, "OCR failure" if update_calls == 2
-
-            original.call(*args, **kwargs)
-          end
+        allow_any_instance_of(Receipt)
+          .to receive(:update!)
+          .with(ocr_text: anything, ocr_status: "done")
+          .and_raise(StandardError, "OCR failure")
 
         expect {
           described_class.new.perform(company.id, receipt.id)
         }.to raise_error(StandardError, "OCR failure")
+
+        Apartment::Tenant.switch(company.subdomain) do
+          expect(Receipt.find(receipt.id).ocr_status).to eq("processing")
+        end
+      end
+    end
+
+    it "marks the receipt failed after Sidekiq retries are exhausted" do
+      with_worker_tenant do |company, _member, _admin, expense|
+        receipt = create(:receipt, expense: expense)
+
+        described_class.mark_failed(company.id, receipt.id)
 
         Apartment::Tenant.switch(company.subdomain) do
           expect(Receipt.find(receipt.id).ocr_status).to eq("failed")
@@ -127,6 +181,7 @@ RSpec.describe "Day 6 background workers" do
       end
     end
   end
+
 
   describe OverdueReminderWorker do
     it "creates one reminder per overdue expense per day" do
@@ -174,7 +229,8 @@ RSpec.describe "Day 6 background workers" do
           member.id,
           "create",
           "new",
-          "pending"
+          "pending",
+          kind_of(String)
         )
 
         # The expense passed into the helper is already committed.
@@ -208,10 +264,10 @@ RSpec.describe "Day 6 background workers" do
     end
 
     it "does not enqueue receipt processing on rollback" do
-      with_worker_tenant do |company, _member, _admin, expense|
+      with_worker_tenant do |_company, _member, _admin, expense|
         expect(ReceiptProcessorWorker).not_to receive(:perform_async)
 
-        Apartment::Tenant.switch(company.subdomain) do
+        Apartment::Tenant.switch(Apartment::Tenant.current) do
           Receipt.transaction do
             create(:receipt, expense: expense)
 

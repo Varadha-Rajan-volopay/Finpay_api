@@ -563,15 +563,15 @@ RSpec.describe "Expenses", type: :request do
   end
 
   describe "DELETE /expenses/:id" do
-    it "allows the owner to delete a pending expense" do
+    it "does not allow an expense to be permanently deleted" do
       expense = create_expense(user: user_a)
 
       delete "/expenses/#{expense.id}", headers: auth_headers(user_a)
 
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:unprocessable_entity)
 
       Apartment::Tenant.switch(company_a.subdomain) do
-        expect(Expense.exists?(expense.id)).to be(false)
+        expect(Expense.exists?(expense.id)).to be(true)
       end
     end
 

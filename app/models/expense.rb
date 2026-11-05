@@ -6,9 +6,11 @@ class Expense < ApplicationRecord
 
   belongs_to :user
   belongs_to :category
+  before_destroy :prevent_deletion
 
   has_many :reimbursement_idempotency_records, dependent: :destroy
   has_many :receipts, dependent: :destroy
+  has_many :overdue_reminders, dependent: :restrict_with_error
 
   aasm column: :status, create_scopes: false do
     state :pending, initial: true
@@ -127,7 +129,18 @@ class Expense < ApplicationRecord
       user_id,
       "create",
       "new",
-      status
+      status,
+      created_at.iso8601(6)
     )
+  rescue StandardError => error
+    Rails.logger.error(
+      "Failed to enqueue expense creation audit for expense #{id}: " \
+      "#{error.class}: #{error.message}"
+    )
+  end
+
+  def prevent_deletion
+    errors.add(:base, "Expenses cannot be deleted because audit history must be preserved")
+    throw(:abort)
   end
 end

@@ -1,5 +1,5 @@
 overdue_reminder:
-  cron: "0 0 * * *"
+  cron: "0 0 * * * Asia/Kolkata"
   class: "OverdueReminderWorker"
   queue: default
   
