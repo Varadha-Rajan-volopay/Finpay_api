@@ -1,7 +1,32 @@
 require "rails_helper"
 
 RSpec.describe ExpensePagination do
-  let(:user) { create(:user) }
+  self.use_transactional_tests = false
+  around do |example|
+    subdomain = "pagination_#{SecureRandom.hex(6)}"
+    @tenant_company = nil
+
+    begin
+      Companies::Provision.call(
+        name: "Pagination Test Company",
+        subdomain: subdomain
+      ) do |provisioned_company|
+        @tenant_company = provisioned_company
+        example.run
+      end
+    ensure
+      Apartment::Tenant.reset
+
+      if ActiveRecord::Base.connection.schema_exists?(subdomain)
+        Apartment::Tenant.drop(subdomain)
+      end
+
+      @tenant_company&.delete
+      @tenant_company = nil
+    end
+  end
+
+  let(:user) { create(:user, company: @tenant_company) }
   let(:category) { create(:category) }
 
   let!(:first_expense) do
@@ -37,7 +62,7 @@ RSpec.describe ExpensePagination do
   let(:scope) { Expense.where(user_id: user.id) }
 
   def serialized_data(result)
-    JSON.parse(result[:data])
+    result[:data]
   end
 
   describe "#call" do

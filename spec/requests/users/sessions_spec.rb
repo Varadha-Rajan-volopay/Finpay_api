@@ -3,6 +3,7 @@ require "rails_helper"
 
 RSpec.describe "Users::Sessions", type: :request do
   self.use_transactional_tests = false
+
   let(:company) do
     create(
       :company,
@@ -59,6 +60,8 @@ RSpec.describe "Users::Sessions", type: :request do
           password: password
         }
       }
+
+      puts "LOGIN DEBUG: status=#{response.status}, body=#{response.body}"
 
       expect(response).to have_http_status(:ok)
 
@@ -156,15 +159,18 @@ RSpec.describe "Users::Sessions", type: :request do
         algorithm: "HS256"
       )
 
-      delete "/auth/logout", headers: {
-        "Authorization" => "Bearer #{token}"
-      }
+      Apartment::Tenant.switch(company.subdomain) do
+        delete "/auth/logout", headers: {
+          "Authorization" => "Bearer #{token}"
+        }
+      end
 
       expect(response).to have_http_status(:ok)
 
       expect(
         JwtDenylist.exists?(jti: payload["jti"])
       ).to be(true)
+
       get "/auth/me", headers: {
         "Authorization" => "Bearer #{token}"
       }

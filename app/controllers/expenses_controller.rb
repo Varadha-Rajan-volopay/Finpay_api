@@ -1,8 +1,20 @@
+
+# frozen_string_literal: true
+
 class ExpensesController < ApplicationController
   after_action :verify_authorized, except: :index
   after_action :verify_policy_scoped, only: :index
 
-  before_action :set_expense, only: %i[show update destroy]
+  before_action :set_expense,
+                only: %i[
+                  show
+                  update
+                  destroy
+                  approve
+                  reject
+                  reimburse
+                  archive
+                ]
 
   def index
     scope = policy_scope(Expense).includes(:category)
@@ -17,58 +29,135 @@ class ExpensesController < ApplicationController
       params
     ).call
 
-    render json: result, status: :ok
+    render_success(
+      data: result[:data],
+      meta: result[:meta]
+    )
   rescue ExpenseFilter::InvalidFilter => e
-    render json: { error: e.message },
-           status: :unprocessable_entity
+    render_error(
+      code: "invalid_filter",
+      message: e.message,
+      status: :unprocessable_entity
+    )
   end
 
   def show
     authorize @expense
 
-    render json: ExpenseSerializer.new(@expense).serialize,
-           status: :ok
+    render_success(
+      data: serialized_expense(@expense)
+    )
   end
 
   def create
     @expense = current_user.expenses.new(expense_params)
-    @expense.status = "pending"
 
     authorize @expense
 
-    if @expense.save
-      render json: ExpenseSerializer.new(@expense).serialize,
-             status: :created
+    result = ExpenseCrudService.call(
+      expense: @expense,
+      action: :create
+    )
+
+    if result.success?
+      render_success(
+        data: serialized_expense(result.value),
+        status: :created
+      )
     else
-      render json: {
-        errors: @expense.errors.full_messages
-      }, status: :unprocessable_entity
+      render_error(
+        code: "validation_failed",
+        message: "Expense could not be created",
+        details: result.errors
+      )
     end
   end
 
   def update
     authorize @expense
 
-    if @expense.update(expense_params)
-      render json: ExpenseSerializer.new(@expense).serialize,
-             status: :ok
+    result = ExpenseCrudService.call(
+      expense: @expense,
+      action: :update,
+      attributes: expense_params
+    )
+
+    if result.success?
+      render_success(
+        data: serialized_expense(result.value)
+      )
     else
-      render json: {
-        errors: @expense.errors.full_messages
-      }, status: :unprocessable_entity
+      render_error(
+        code: "validation_failed",
+        message: "Expense could not be updated",
+        details: result.errors
+      )
     end
   end
 
   def destroy
     authorize @expense
 
-    if @expense.destroy
+    result = ExpenseCrudService.call(
+      expense: @expense,
+      action: :destroy
+    )
+
+    if result.success?
       head :no_content
     else
-      render json: {
-        errors: @expense.errors.full_messages
-      }, status: :unprocessable_entity
+      render_error(
+        code: "deletion_failed",
+        message: "Expense could not be deleted",
+        details: result.errors
+      )
     end
+  end
+
+  def approve
+    perform_idempotent_workflow_action(:approve)
+  end
+
+  def reject
+    perform_idempotent_workflow_action(:reject)
+  end
+
+  def reimburse
+    authorize @expense
+
+    idempotency_key = request.headers["Idempotency-Key"]
+
+    if idempotency_key.present? && idempotency_key.length > 255
+      return render json: {
+        errors: [ "Idempotency-Key must not exceed 255 characters" ]
+      }, status: :bad_request
+    end
+
+    result = ReimbursementIdempotencyService.call(
+      expense: @expense,
+      actor: current_user,
+      idempotency_key: idempotency_key
+    )
+
+    response_body = result.value[:body]
+    response_status = result.value[:status]
+
+    if response_status == 200
+      render_success(data: response_body)
+    else
+      errors = response_body[:errors] || response_body["errors"] || []
+
+      render_error(
+        code: "reimbursement_failed",
+        message: errors.first || "Reimbursement could not be completed",
+        details: errors,
+        status: response_status
+      )
+    end
+  end
+
+  def archive
+    perform_workflow_action(:archive)
   end
 
   private
@@ -97,5 +186,50 @@ class ExpensesController < ApplicationController
       :pagination,
       :cursor
     )
+  end
+
+  def serialized_expense(expense)
+    ExpenseSerializer.new(expense).serializable_hash
+  end
+  def perform_idempotent_workflow_action(action)
+    authorize @expense
+
+    result = ExpenseWorkflowIdempotencyService.call(
+      expense: @expense,
+      actor: current_user,
+      action: action,
+      idempotency_key: request.headers["Idempotency-Key"]
+    )
+
+    if result.success?
+      render json: result.value[:body],
+            status: result.value[:status]
+    else
+      render json: {
+        errors: result.errors
+      }, status: :unprocessable_entity
+    end
+  end
+
+  def perform_workflow_action(action)
+    authorize @expense
+
+    result = ExpenseWorkflowService.call(
+      expense: @expense,
+      actor: current_user,
+      action: action
+    )
+
+    if result.success?
+      render_success(
+        data: serialized_expense(result.value)
+      )
+    else
+      render_error(
+        code: "workflow_failed",
+        message: "The expense workflow action could not be performed",
+        details: result.errors
+      )
+    end
   end
 end

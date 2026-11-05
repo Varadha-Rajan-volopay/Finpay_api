@@ -100,18 +100,17 @@ class Users::SessionsController < Devise::SessionsController
       record.exp = Time.at(exp)
     end
 
-    # Revoke the refresh token if the client supplies it.
-    raw_refresh_token = params[:refresh_token]
-
-    if raw_refresh_token.present?
-      refresh_record = RefreshToken.find_by(
-        token_digest: RefreshToken.digest(raw_refresh_token),
-        company_id: payload["company_id"],
-        user_id: payload["sub"]
-      )
-
-      refresh_record&.revoke!
-    end
+    # Revoke all active refresh tokens for the authenticated user.
+    RefreshToken.where(
+      company_id: payload["company_id"],
+      user_id: payload["sub"],
+      revoked_at: nil
+    ).where(
+      "expires_at > ?", Time.current
+    ).update_all(
+      revoked_at: Time.current,
+      updated_at: Time.current
+    )
 
     render json: {
       message: "Logout successful"

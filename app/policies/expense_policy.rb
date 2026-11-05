@@ -24,15 +24,29 @@ class ExpensePolicy < ApplicationPolicy
   end
 
   def update?
-    return false unless record.pending?
-
-    same_user? || user.admin?
+    record.pending? && same_user?
   end
 
   def destroy?
-    return false unless record.pending?
+    record.pending? && same_user?
+  end
 
-    same_user? || user.admin?
+
+
+  def approve?
+    user.present? && user.admin? && !same_user?
+  end
+
+  def reject?
+    user.present? && user.admin? && !same_user?
+  end
+
+  def reimburse?
+    user.present? && user.admin?
+  end
+
+  def archive?
+    user.present? && user.admin?
   end
 
   private

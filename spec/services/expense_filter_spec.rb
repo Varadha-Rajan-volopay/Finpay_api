@@ -1,6 +1,36 @@
+
 require "rails_helper"
 
 RSpec.describe ExpenseFilter do
+  # Tenant provisioning runs migrations that use concurrent indexes.
+  # These examples must not run inside the default RSpec transaction.
+  self.use_transactional_tests = false
+
+  # Create a separate tenant for these tests so that users, categories,
+  # and expenses are available inside the correct tenant schema.
+  around do |example|
+    subdomain = "filter_#{SecureRandom.hex(6)}"
+    company = nil
+
+    begin
+      Companies::Provision.call(
+        name: "Filter Test Company",
+        subdomain: subdomain
+      ) do |provisioned_company|
+        company = provisioned_company
+        example.run
+      end
+    ensure
+      Apartment::Tenant.reset
+
+      if ActiveRecord::Base.connection.schema_exists?(subdomain)
+        Apartment::Tenant.drop(subdomain)
+      end
+
+      company&.delete
+    end
+  end
+
   let(:category) { create(:category) }
   let(:another_category) { create(:category) }
 

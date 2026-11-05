@@ -79,18 +79,18 @@ class CreateExpenseTrackingTenantTables < ActiveRecord::Migration[8.1]
 
   def add_expense_constraints
     unless check_constraint_exists?(:expenses, name: "chk_expenses_amount_cents_positive")
-      add_check_constraint(
-        :expenses,
-        "amount_cents > 0",
-        name: "chk_expenses_amount_cents_positive"
-      )
+      add_check_constraint :expenses,
+                            "amount_cents > 0",
+                            name: "chk_expenses_amount_cents_positive",
+                            validate: false
     end
 
     unless check_constraint_exists?(:expenses, name: "chk_expenses_currency_format")
       add_check_constraint(
         :expenses,
         "currency ~ '^[A-Z]{3}$'",
-        name: "chk_expenses_currency_format"
+        name: "chk_expenses_currency_format",
+        validate: false
       )
     end
   end

@@ -445,7 +445,7 @@ RSpec.describe "Expenses", type: :request do
       get "/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok)
-      expect(decoded_response_body["id"]).to eq(expense.id)
+      expect(expense_data_from_body(decoded_response_body)["id"]).to eq(expense.id)
     end
 
     it "does not allow a member to view another member's expense" do
@@ -487,11 +487,18 @@ RSpec.describe "Expenses", type: :request do
 
       expect(response).to have_http_status(:created)
 
-      body = decoded_response_body
+      body = expense_data_from_body(decoded_response_body)
 
       expect(body["title"]).to eq("Office supplies")
       expect(body["user_id"]).to eq(user_a.id)
       expect(body["status"]).to eq("pending")
+    end
+
+    it "returns 400 when expense parameters are missing" do
+      post "/expenses", headers: auth_headers(user_a)
+
+      expect(response).to have_http_status(:bad_request)
+      expect(decoded_response_body.dig("error", "code")).to eq("bad_request")
     end
 
     it "returns validation errors for invalid expense data" do
@@ -512,7 +519,36 @@ RSpec.describe "Expenses", type: :request do
            headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:unprocessable_entity)
-      expect(decoded_response_body).to have_key("errors")
+      expect(decoded_response_body).to have_key("error")
+
+      expect(decoded_response_body["error"]["code"]).to eq(
+        "validation_failed"
+      )
+
+      expect(decoded_response_body["error"]["details"]).to include(
+        "Title can't be blank"
+      )
+    end
+
+    it "returns 400 for an invalid per parameter" do
+      get "/expenses",
+          params: { per: "invalid" },
+          headers: auth_headers(user_a)
+
+      expect(response).to have_http_status(:bad_request)
+      expect(decoded_response_body.dig("error", "code")).to eq("bad_request")
+    end
+
+    it "returns 400 for an invalid keyset cursor" do
+      get "/expenses",
+          params: {
+            pagination: "keyset",
+            cursor: "invalid-cursor"
+          },
+          headers: auth_headers(user_a)
+
+      expect(response).to have_http_status(:bad_request)
+      expect(decoded_response_body.dig("error", "code")).to eq("bad_request")
     end
   end
 
@@ -530,7 +566,7 @@ RSpec.describe "Expenses", type: :request do
             headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok)
-      expect(decoded_response_body["title"]).to eq("Updated lunch")
+      expect(expense_data_from_body(decoded_response_body)["title"]).to eq("Updated lunch")
     end
 
     it "does not allow a member to update another member's expense" do
@@ -563,15 +599,15 @@ RSpec.describe "Expenses", type: :request do
   end
 
   describe "DELETE /expenses/:id" do
-    it "allows the owner to delete a pending expense" do
+    it "does not allow an expense to be permanently deleted" do
       expense = create_expense(user: user_a)
 
       delete "/expenses/#{expense.id}", headers: auth_headers(user_a)
 
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:unprocessable_entity)
 
       Apartment::Tenant.switch(company_a.subdomain) do
-        expect(Expense.exists?(expense.id)).to be(false)
+        expect(Expense.exists?(expense.id)).to be(true)
       end
     end
 
@@ -589,6 +625,216 @@ RSpec.describe "Expenses", type: :request do
       delete "/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:forbidden)
+    end
+  end
+  describe "POST expense workflow actions" do
+    describe "POST /expenses/:id/approve" do
+      it "allows an admin to approve another user's pending expense" do
+        expense = create_expense(user: user_a)
+
+        post "/expenses/#{expense.id}/approve",
+            headers: auth_headers(admin_a).merge(
+              "Idempotency-Key" => SecureRandom.uuid
+        )
+
+        expect(response).to have_http_status(:ok)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("approved")
+        end
+      end
+
+      it "does not allow a member to approve an expense" do
+        expense = create_expense(user: user_a)
+
+        post "/expenses/#{expense.id}/approve",
+             headers: auth_headers(user_a)
+
+        expect(response).to have_http_status(:forbidden)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("pending")
+        end
+      end
+
+      it "does not allow an admin to approve their own expense" do
+        expense = create_expense(user: admin_a)
+
+        post "/expenses/#{expense.id}/approve",
+             headers: auth_headers(admin_a)
+
+        expect(response).to have_http_status(:forbidden)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("pending")
+        end
+      end
+    end
+
+    describe "POST /expenses/:id/reject" do
+      it "allows an admin to reject a pending expense" do
+        expense = create_expense(user: user_a)
+
+        post "/expenses/#{expense.id}/reject",
+             headers: auth_headers(admin_a).merge(
+              "Idempotency-Key" => SecureRandom.uuid
+        )
+
+        expect(response).to have_http_status(:ok)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("rejected")
+        end
+      end
+
+      it "does not allow a member to reject an expense" do
+        expense = create_expense(user: user_a)
+
+        post "/expenses/#{expense.id}/reject",
+             headers: auth_headers(user_a)
+
+        expect(response).to have_http_status(:forbidden)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("pending")
+        end
+      end
+    end
+
+    describe "POST /expenses/:id/reimburse" do
+      it "allows an admin to reimburse an approved expense" do
+        expense = create_expense(user: user_a, status: "approved")
+
+        post "/expenses/#{expense.id}/reimburse",
+             headers: auth_headers(admin_a).merge(
+               "Idempotency-Key" => SecureRandom.uuid
+             )
+
+        expect(response).to have_http_status(:ok)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("reimbursed")
+        end
+      end
+
+      it "returns an error when the reimbursement workflow fails" do
+        expense = create_expense(user: user_a, status: "approved")
+
+        allow(ExpenseWorkflowService).to receive(:call).and_return(
+          ApplicationService::Result.new(
+            success: false,
+            errors: [ "Reimbursement could not be completed" ]
+          )
+        )
+
+        post "/expenses/#{expense.id}/reimburse",
+            headers: auth_headers(admin_a).merge(
+              "Idempotency-Key" => SecureRandom.uuid
+            )
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(decoded_response_body.dig("error", "code")).to eq(
+          "reimbursement_failed"
+        )
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("approved")
+        end
+      end
+
+      it "returns bad request when the idempotency key is missing" do
+        expense = create_expense(user: user_a, status: "approved")
+
+        post "/expenses/#{expense.id}/reimburse",
+             headers: auth_headers(admin_a)
+
+        expect(response).to have_http_status(:bad_request)
+        expect(decoded_response_body.dig("error", "code")).to eq(
+          "reimbursement_failed"
+        )
+
+        expect(decoded_response_body.dig("error", "message")).to eq(
+          "Idempotency-Key header is required"
+        )
+
+        expect(decoded_response_body.dig("error", "details")).to include(
+          "Idempotency-Key header is required"
+        )
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("approved")
+        end
+      end
+
+      it "replays the response for the same idempotency key" do
+        expense = create_expense(user: user_a, status: "approved")
+        idempotency_key = SecureRandom.uuid
+
+        headers = auth_headers(admin_a).merge(
+          "Idempotency-Key" => idempotency_key
+        )
+
+        post "/expenses/#{expense.id}/reimburse", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        first_response_body = response.body
+
+        post "/expenses/#{expense.id}/reimburse", headers: headers
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)).to eq(JSON.parse(first_response_body))
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(
+            ReimbursementIdempotencyRecord.where(
+              idempotency_key: idempotency_key
+            ).count
+          ).to eq(1)
+        end
+      end
+
+      it "does not allow a member to reimburse an expense" do
+        expense = create_expense(user: user_a, status: "approved")
+
+        post "/expenses/#{expense.id}/reimburse",
+             headers: auth_headers(user_a).merge(
+               "Idempotency-Key" => SecureRandom.uuid
+             )
+
+        expect(response).to have_http_status(:forbidden)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("approved")
+        end
+      end
+    end
+
+    describe "POST /expenses/:id/archive" do
+      it "allows an admin to archive a reimbursed expense" do
+        expense = create_expense(user: user_a, status: "reimbursed")
+
+        post "/expenses/#{expense.id}/archive",
+             headers: auth_headers(admin_a)
+
+        expect(response).to have_http_status(:ok)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("archived")
+        end
+      end
+
+      it "does not allow a member to archive an expense" do
+        expense = create_expense(user: user_a, status: "reimbursed")
+
+        post "/expenses/#{expense.id}/archive",
+             headers: auth_headers(user_a)
+
+        expect(response).to have_http_status(:forbidden)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("reimbursed")
+        end
+      end
     end
   end
 end

@@ -1,17 +1,59 @@
+# frozen_string_literal: true
 
 class Expense < ApplicationRecord
+  include AASM
+
+  before_validation :assign_reference_number, on: :create
+  after_create_commit :enqueue_creation_audit
+
   belongs_to :user
   belongs_to :category
+  before_destroy :prevent_deletion
 
+  belongs_to :approved_by,
+              class_name: "User",
+              optional: true
+
+  belongs_to :rejected_by,
+              class_name: "User",
+              optional: true
+
+  belongs_to :reimbursed_by,
+              class_name: "User",
+              optional: true
+
+  has_many :reimbursement_idempotency_records, dependent: :destroy
   has_many :receipts, dependent: :destroy
+  has_many :overdue_reminders, dependent: :restrict_with_error
+  has_many :activity_logs, dependent: :restrict_with_error
 
-  enum :status, {
-    pending: "pending",
-    approved: "approved",
-    rejected: "rejected",
-    reimbursed: "reimbursed",
-    archived: "archived"
-  }, validate: true
+  aasm column: :status, create_scopes: false do
+    state :pending, initial: true
+    state :approved
+    state :rejected
+    state :reimbursed
+    state :archived
+
+    event :approve do
+      transitions from: :pending, to: :approved
+    end
+
+    event :reject do
+      transitions from: :pending, to: :rejected
+    end
+
+    event :reimburse do
+      transitions from: :approved, to: :reimbursed
+    end
+
+    event :archive do
+      transitions from: :reimbursed, to: :archived
+    end
+  end
+  validates :status,
+            inclusion: {
+              in: %w[pending approved rejected reimbursed archived]
+            }
 
   CURRENCIES = %w[INR USD EUR].freeze
 
@@ -35,14 +77,6 @@ class Expense < ApplicationRecord
   scope :for_month, ->(date) { where(incurred_on: date.all_month) }
 
   delegate :name, to: :category, prefix: true
-
-  # Returns the amount in major currency units as a decimal string.
-  # Example: 1050 cents -> "10.50"
-  def amount_display
-    whole_units, minor_units = amount_cents.divmod(100)
-
-    "#{whole_units}.#{minor_units.to_s.rjust(2, '0')}"
-  end
 
   # Converts a user-entered decimal amount into integer minor units.
   # User input with more than 2 decimal places is rejected, not rounded.
@@ -96,4 +130,32 @@ class Expense < ApplicationRecord
   end
 
   private_class_method :validate_currency!
+
+  private
+
+  def assign_reference_number
+    self.reference_number ||= "EXP-#{SecureRandom.hex(16).upcase}"
+  end
+
+  def enqueue_creation_audit
+    AuditLogWorker.perform_async(
+      user.company_id,
+      id,
+      user_id,
+      "create",
+      "new",
+      status,
+      created_at.iso8601(6)
+    )
+  rescue StandardError => error
+    Rails.logger.error(
+      "Failed to enqueue expense creation audit for expense #{id}: " \
+      "#{error.class}: #{error.message}"
+    )
+  end
+
+  def prevent_deletion
+    errors.add(:base, "Expenses cannot be deleted because audit history must be preserved")
+    throw(:abort)
+  end
 end

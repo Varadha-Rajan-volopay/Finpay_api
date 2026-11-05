@@ -74,7 +74,7 @@ class ExpenseFilter
   def validate_status!
     return unless @params[:status].present?
 
-    allowed_statuses = Expense.statuses.keys
+    allowed_statuses = Expense.aasm.states.map(&:name).map(&:to_s)
 
     unless allowed_statuses.include?(@params[:status].to_s)
       raise InvalidFilter, "Invalid status"
