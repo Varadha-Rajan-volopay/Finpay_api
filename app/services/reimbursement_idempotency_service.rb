@@ -1,3 +1,4 @@
+
 # frozen_string_literal: true
 
 class ReimbursementIdempotencyService < ApplicationService
@@ -30,6 +31,7 @@ class ReimbursementIdempotencyService < ApplicationService
     Expense.transaction do
       @expense.with_lock do
         existing_record = ReimbursementIdempotencyRecord.find_by(
+          actor_id: @actor.id,
           idempotency_key: @idempotency_key
         )
 
@@ -44,52 +46,34 @@ class ReimbursementIdempotencyService < ApplicationService
           action: :reimburse
         )
 
-        if workflow_result.success?
-          response_body = ExpenseSerializer.new(
-            @expense
-          ).serializable_hash
-
-          response_status = :ok
-        else
-          response_body = {
-            errors: workflow_result.errors
+        unless workflow_result.success?
+          response = {
+            body: { errors: workflow_result.errors },
+            status: :unprocessable_entity,
+            replayed: false
           }
 
-          response_status = :unprocessable_entity
+          next
         end
 
+        response_body = ExpenseSerializer.new(
+          @expense
+        ).serializable_hash
+
         record = ReimbursementIdempotencyRecord.create!(
+          actor: @actor,
           idempotency_key: @idempotency_key,
           expense: @expense,
           response_body: response_body,
-          response_status: Rack::Utils.status_code(response_status)
+          response_status: Rack::Utils.status_code(:ok)
         )
 
-      unless workflow_result.success?
         response = {
-          body: { errors: workflow_result.errors },
-          status: :unprocessable_entity,
+          body: record.response_body,
+          status: record.response_status,
           replayed: false
         }
-
-        next
       end
-
-      response_body = ExpenseSerializer.new(expense).serialize
-
-      record = ReimbursementIdempotencyRecord.create!(
-        actor: @actor,
-        idempotency_key: @idempotency_key,
-        expense: expense,
-        response_body: response_body,
-        response_status: Rack::Utils.status_code(:ok)
-      )
-
-      response = {
-        body: record.response_body,
-        status: record.response_status,
-        replayed: false
-      }
     end
 
     response
@@ -110,7 +94,9 @@ class ReimbursementIdempotencyService < ApplicationService
 
   def missing_key_result
     {
-      body: { errors: [ "Idempotency-Key header is required" ] },
+      body: {
+        errors: [ "Idempotency-Key header is required" ]
+      },
       status: :bad_request,
       replayed: false
     }

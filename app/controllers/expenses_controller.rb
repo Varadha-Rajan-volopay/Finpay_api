@@ -190,6 +190,7 @@ class ExpensesController < ApplicationController
 
   def serialized_expense(expense)
     ExpenseSerializer.new(expense).serializable_hash
+  end
   def perform_idempotent_workflow_action(action)
     authorize @expense
 
