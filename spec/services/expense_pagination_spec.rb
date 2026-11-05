@@ -62,7 +62,7 @@ RSpec.describe ExpensePagination do
   let(:scope) { Expense.where(user_id: user.id) }
 
   def serialized_data(result)
-    JSON.parse(result[:data])
+    result[:data]
   end
 
   describe "#call" do

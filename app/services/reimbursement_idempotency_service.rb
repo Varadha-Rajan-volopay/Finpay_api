@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ReimbursementIdempotencyService < ApplicationService
   def initialize(expense:, actor:, idempotency_key:)
     @expense = expense
@@ -45,8 +47,8 @@ class ReimbursementIdempotencyService < ApplicationService
 
         if workflow_result.success?
           response_body = ExpenseSerializer.new(
-            @expense.reload
-          ).serialize
+            @expense
+          ).serializable_hash
 
           response_status = :ok
         else
@@ -77,22 +79,15 @@ class ReimbursementIdempotencyService < ApplicationService
 
   def response_for(record)
     if record.expense_id != @expense.id
-      {
-        body: {
-          errors: [
+      raise Errors::IdempotencyConflict,
             "Idempotency-Key has already been used for another expense"
-          ]
-        },
-        status: :unprocessable_entity,
-        replayed: false
-      }
-    else
-      {
-        body: record.response_body,
-        status: record.response_status,
-        replayed: true
-      }
     end
+
+    {
+      body: record.response_body,
+      status: record.response_status,
+      replayed: true
+    }
   end
 
   def missing_key_result

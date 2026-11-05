@@ -115,9 +115,7 @@ class Expense < ApplicationRecord
   private
 
   def assign_reference_number
-    return unless has_attribute?(:reference_number)
-
-    self.reference_number ||= "EXP-#{SecureRandom.hex(6).upcase}"
+    self.reference_number ||= "EXP-#{SecureRandom.hex(16).upcase}"
   end
 
   def enqueue_creation_audit
@@ -127,7 +125,8 @@ class Expense < ApplicationRecord
       user_id,
       "create",
       "new",
-      status
+      status,
+      Time.current.iso8601(6)
     )
   end
 end

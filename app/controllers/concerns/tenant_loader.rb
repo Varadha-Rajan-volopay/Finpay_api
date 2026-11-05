@@ -43,18 +43,21 @@ module TenantLoader
   end
 
   def verified_company_id
+    return @verified_company_id if defined?(@verified_company_id)
+
     token = request.headers["Authorization"]&.split(" ")&.last
-    return unless token.present?
 
-    payload, = JWT.decode(
-      token,
-      Rails.application.secret_key_base,
-      true,
-      algorithm: "HS256"
-    )
+    @verified_company_id = if token.present?
+                            payload, = JWT.decode(
+                              token,
+                              Rails.application.secret_key_base,
+                              true,
+                              algorithm: "HS256"
+                            )
 
-    payload["company_id"]
+                            payload["company_id"]
+    end
   rescue JWT::DecodeError
-    nil
+    @verified_company_id = nil
   end
 end

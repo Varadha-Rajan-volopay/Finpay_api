@@ -39,6 +39,8 @@ RSpec.describe BackfillReimbursedAtOnExpenses do
     Companies::TenantMigration.run!(company.subdomain)
 
     Apartment::Tenant.switch(company.subdomain) do
+      Expense.reset_column_information
+
       user = create(:user, company: company, role: :member)
       category = create(:category)
 
@@ -51,6 +53,15 @@ RSpec.describe BackfillReimbursedAtOnExpenses do
         )
 
         timestamp = Time.zone.parse("2026-10-01 10:00:00") + index.minutes
+
+        ActivityLog.create!(
+          expense: expense,
+          actor: user,
+          action: "reimburse",
+          from_state: "approved",
+          to_state: "reimbursed",
+          created_at: timestamp
+        )
 
         expense.update_columns(
           reimbursed_at: nil,
@@ -100,6 +111,45 @@ RSpec.describe BackfillReimbursedAtOnExpenses do
 
         expect(pending_expense.reimbursed_at).to be_nil
       end
+    end
+  end
+  it "backfills archived expenses using the reimbursement activity timestamp" do
+    connection = ActiveRecord::Base.connection
+
+    connection.execute(
+      "CREATE SCHEMA #{connection.quote_table_name(company_a.subdomain)}"
+    )
+
+    Companies::TenantMigration.run!(company_a.subdomain)
+
+    Apartment::Tenant.switch(company_a.subdomain) do
+      Expense.reset_column_information
+
+      user = create(:user, company: company_a, role: :member)
+      category = create(:category)
+
+      expense = create(
+        :expense,
+        user: user,
+        category: category,
+        status: "archived",
+        reimbursed_at: nil
+      )
+
+      reimbursement_time = Time.zone.parse("2026-10-01 10:00:00")
+
+      ActivityLog.create!(
+        expense: expense,
+        actor: user,
+        action: "reimburse",
+        from_state: "approved",
+        to_state: "reimbursed",
+        created_at: reimbursement_time
+      )
+
+      described_class.new.migrate(:up)
+
+      expect(expense.reload.reimbursed_at).to eq(reimbursement_time)
     end
   end
 end

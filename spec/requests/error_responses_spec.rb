@@ -116,4 +116,12 @@ RSpec.describe "API error responses", type: :request do
       /SELECT\s|INSERT\s|UPDATE\s|DELETE\s|ActiveRecord::|PG::|backtrace|app\/controllers/i
     )
   end
+  it "returns a consistent 400 response when the expense parameter is missing" do
+    post "/expenses",
+        params: {},
+        headers: auth_headers(member)
+
+    expect(response).to have_http_status(:bad_request)
+    expect_standard_error("bad_request")
+  end
 end

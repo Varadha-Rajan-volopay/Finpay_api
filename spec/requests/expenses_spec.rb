@@ -494,6 +494,13 @@ RSpec.describe "Expenses", type: :request do
       expect(body["status"]).to eq("pending")
     end
 
+    it "returns 400 when expense parameters are missing" do
+      post "/expenses", headers: auth_headers(user_a)
+
+      expect(response).to have_http_status(:bad_request)
+      expect(decoded_response_body.dig("error", "code")).to eq("bad_request")
+    end
+
     it "returns validation errors for invalid expense data" do
       category = Apartment::Tenant.switch(company_a.subdomain) do
         create(:category)
@@ -521,6 +528,27 @@ RSpec.describe "Expenses", type: :request do
       expect(decoded_response_body["error"]["details"]).to include(
         "Title can't be blank"
       )
+    end
+
+    it "returns 400 for an invalid per parameter" do
+      get "/expenses",
+          params: { per: "invalid" },
+          headers: auth_headers(user_a)
+
+      expect(response).to have_http_status(:bad_request)
+      expect(decoded_response_body.dig("error", "code")).to eq("bad_request")
+    end
+
+    it "returns 400 for an invalid keyset cursor" do
+      get "/expenses",
+          params: {
+            pagination: "keyset",
+            cursor: "invalid-cursor"
+          },
+          headers: auth_headers(user_a)
+
+      expect(response).to have_http_status(:bad_request)
+      expect(decoded_response_body.dig("error", "code")).to eq("bad_request")
     end
   end
 
@@ -685,6 +713,31 @@ RSpec.describe "Expenses", type: :request do
         end
       end
 
+      it "returns an error when the reimbursement workflow fails" do
+        expense = create_expense(user: user_a, status: "approved")
+
+        allow(ExpenseWorkflowService).to receive(:call).and_return(
+          ApplicationService::Result.new(
+            success: false,
+            errors: [ "Reimbursement could not be completed" ]
+          )
+        )
+
+        post "/expenses/#{expense.id}/reimburse",
+            headers: auth_headers(admin_a).merge(
+              "Idempotency-Key" => SecureRandom.uuid
+            )
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(decoded_response_body.dig("error", "code")).to eq(
+          "reimbursement_failed"
+        )
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.status).to eq("approved")
+        end
+      end
+
       it "returns bad request when the idempotency key is missing" do
         expense = create_expense(user: user_a, status: "approved")
 
@@ -725,7 +778,7 @@ RSpec.describe "Expenses", type: :request do
         post "/expenses/#{expense.id}/reimburse", headers: headers
 
         expect(response).to have_http_status(:ok)
-        expect(response.body).to eq(first_response_body)
+        expect(JSON.parse(response.body)).to eq(JSON.parse(first_response_body))
 
         Apartment::Tenant.switch(company_a.subdomain) do
           expect(

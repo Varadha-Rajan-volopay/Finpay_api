@@ -3,6 +3,8 @@
 
 class ExpenseCrudService < ApplicationService
   ACTIONS = %i[create update destroy].freeze
+  REFERENCE_NUMBER_INDEX = "index_expenses_on_reference_number_unique"
+  MAX_REFERENCE_NUMBER_ATTEMPTS = 3
 
   def initialize(expense:, action:, attributes: {})
     @expense = expense
@@ -43,8 +45,19 @@ class ExpenseCrudService < ApplicationService
   private
 
   def create_expense
-    @expense.status = "pending"
-    @expense.save!
+    attempts = 0
+
+    begin
+      @expense.save!
+    rescue ActiveRecord::RecordNotUnique => error
+      raise unless error.message.include?(REFERENCE_NUMBER_INDEX)
+
+      attempts += 1
+      raise if attempts >= MAX_REFERENCE_NUMBER_ATTEMPTS
+
+      @expense.reference_number = nil
+      retry
+    end
 
     Result.new(success: true, value: @expense)
   end

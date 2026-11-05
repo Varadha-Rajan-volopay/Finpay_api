@@ -9,6 +9,8 @@ module Companies
         )
 
         migration_context.migrate
+
+        Expense.reset_column_information
       end
     ensure
       Apartment::Tenant.reset

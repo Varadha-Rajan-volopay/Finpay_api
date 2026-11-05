@@ -30,7 +30,7 @@ class ExpensesController < ApplicationController
     ).call
 
     render_success(
-      data: parse_serialized_data(result[:data]),
+      data: result[:data],
       meta: result[:meta]
     )
   rescue ExpenseFilter::InvalidFilter => e
@@ -137,10 +137,7 @@ class ExpensesController < ApplicationController
     response_status = result.value[:status]
 
     if response_status == 200
-      expense_data = response_body.is_a?(String) ?
-        JSON.parse(response_body) : response_body
-
-      render_success(data: expense_data)
+      render_success(data: response_body)
     else
       errors = response_body[:errors] || response_body["errors"] || []
 
@@ -186,13 +183,7 @@ class ExpensesController < ApplicationController
   end
 
   def serialized_expense(expense)
-    parse_serialized_data(
-      ExpenseSerializer.new(expense).serialize
-    )
-  end
-
-  def parse_serialized_data(serialized_data)
-    JSON.parse(serialized_data)
+    ExpenseSerializer.new(expense).serializable_hash
   end
 
   def perform_workflow_action(action)
@@ -206,11 +197,11 @@ class ExpensesController < ApplicationController
 
     if result.success?
       render_success(
-        data: serialized_expense(@expense.reload)
+        data: serialized_expense(result.value)
       )
     else
       render_error(
-        code: "invalid_transition",
+        code: "workflow_failed",
         message: "The expense workflow action could not be performed",
         details: result.errors
       )
