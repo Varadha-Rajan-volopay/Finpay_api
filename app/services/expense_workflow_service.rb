@@ -1,4 +1,3 @@
-
 class ExpenseWorkflowService < ApplicationService
   ACTIONS = %i[
     approve
@@ -23,7 +22,7 @@ class ExpenseWorkflowService < ApplicationService
 
     result = nil
 
-    Expense.transaction do
+    Expense.transaction(requires_new: true) do
       @expense.with_lock do
         from_state = @expense.status
 
@@ -39,6 +38,24 @@ class ExpenseWorkflowService < ApplicationService
         end
 
         @expense.public_send("#{@action}!")
+
+        case @action
+        when :approve
+          @expense.update!(
+            approved_by: @actor,
+            approved_at: Time.current
+          )
+        when :reject
+          @expense.update!(
+            rejected_by: @actor,
+            rejected_at: Time.current
+          )
+        when :reimburse
+          @expense.update!(
+            reimbursed_by: @actor,
+            reimbursed_at: Time.current
+          )
+        end
 
         to_state = @expense.status
 

@@ -17,18 +17,16 @@ RSpec.describe ApplicationService do
       expect(result.errors).to be_empty
     end
 
-    it "returns a failure result when the service raises an error" do
+    it "re-raises unexpected errors" do
       service_class = Class.new(described_class) do
         def call
           raise StandardError, "Something went wrong"
         end
       end
 
-      result = service_class.call
-
-      expect(result).to be_failure
-      expect(result.value).to be_nil
-      expect(result.errors).to eq([ "Something went wrong" ])
+      expect do
+        service_class.call
+      end.to raise_error(StandardError, "Something went wrong")
     end
 
     it "preserves a result returned by the service" do
