@@ -5,8 +5,21 @@ class Expense < ApplicationRecord
   belongs_to :user
   belongs_to :category
 
+  belongs_to :approved_by,
+              class_name: "User",
+              optional: true
+
+  belongs_to :rejected_by,
+              class_name: "User",
+              optional: true
+
+  belongs_to :reimbursed_by,
+              class_name: "User",
+              optional: true
+
   has_many :reimbursement_idempotency_records, dependent: :destroy
   has_many :receipts, dependent: :destroy
+  has_many :activity_logs, dependent: :restrict_with_error
 
   aasm column: :status, create_scopes: false do
     state :pending, initial: true
@@ -31,6 +44,10 @@ class Expense < ApplicationRecord
       transitions from: :reimbursed, to: :archived
     end
   end
+  validates :status,
+            inclusion: {
+              in: %w[pending approved rejected reimbursed archived]
+            }
 
   CURRENCIES = %w[INR USD EUR].freeze
 

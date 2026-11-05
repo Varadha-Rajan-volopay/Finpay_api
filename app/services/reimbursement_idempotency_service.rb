@@ -8,17 +8,16 @@ class ReimbursementIdempotencyService < ApplicationService
   def call
     return missing_key_result if @idempotency_key.blank?
 
-    begin
-      process_reimbursement
-    rescue ActiveRecord::RecordNotUnique
-      # Another concurrent request may have inserted this key.
-      # The winning transaction has committed before this lookup succeeds.
-      existing_record = ReimbursementIdempotencyRecord.find_by!(
-        idempotency_key: @idempotency_key
-      )
+    process_reimbursement
+  rescue ActiveRecord::RecordNotUnique
+    existing_record = ReimbursementIdempotencyRecord.find_by(
+      actor_id: @actor.id,
+      idempotency_key: @idempotency_key
+    )
 
-      response_for(existing_record)
-    end
+    raise unless existing_record
+
+    response_for(existing_record)
   end
 
   private
@@ -27,49 +26,49 @@ class ReimbursementIdempotencyService < ApplicationService
     response = nil
 
     Expense.transaction do
-      @expense.with_lock do
-        existing_record = ReimbursementIdempotencyRecord.find_by(
-          idempotency_key: @idempotency_key
-        )
+      expense = Expense.lock.find(@expense.id)
 
-        if existing_record
-          response = response_for(existing_record)
-          next
-        end
+      existing_record = ReimbursementIdempotencyRecord.find_by(
+        actor_id: @actor.id,
+        idempotency_key: @idempotency_key
+      )
 
-        workflow_result = ExpenseWorkflowService.call(
-          expense: @expense,
-          actor: @actor,
-          action: :reimburse
-        )
+      if existing_record
+        response = response_for(existing_record)
+        next
+      end
 
-        if workflow_result.success?
-          response_body = ExpenseSerializer.new(
-            @expense.reload
-          ).serialize
+      workflow_result = ExpenseWorkflowService.call(
+        expense: expense,
+        actor: @actor,
+        action: :reimburse
+      )
 
-          response_status = :ok
-        else
-          response_body = {
-            errors: workflow_result.errors
-          }
-
-          response_status = :unprocessable_entity
-        end
-
-        record = ReimbursementIdempotencyRecord.create!(
-          idempotency_key: @idempotency_key,
-          expense: @expense,
-          response_body: response_body,
-          response_status: Rack::Utils.status_code(response_status)
-        )
-
+      unless workflow_result.success?
         response = {
-          body: record.response_body,
-          status: record.response_status,
+          body: { errors: workflow_result.errors },
+          status: :unprocessable_entity,
           replayed: false
         }
+
+        next
       end
+
+      response_body = ExpenseSerializer.new(expense).serialize
+
+      record = ReimbursementIdempotencyRecord.create!(
+        actor: @actor,
+        idempotency_key: @idempotency_key,
+        expense: expense,
+        response_body: response_body,
+        response_status: Rack::Utils.status_code(:ok)
+      )
+
+      response = {
+        body: record.response_body,
+        status: record.response_status,
+        replayed: false
+      }
     end
 
     response
@@ -97,9 +96,7 @@ class ReimbursementIdempotencyService < ApplicationService
 
   def missing_key_result
     {
-      body: {
-        errors: [ "Idempotency-Key header is required" ]
-      },
+      body: { errors: [ "Idempotency-Key header is required" ] },
       status: :bad_request,
       replayed: false
     }

@@ -1,4 +1,3 @@
-
 class ExpenseWorkflowIdempotencyService < ApplicationService
   ACTIONS = %i[approve reject].freeze
 
@@ -13,14 +12,20 @@ class ExpenseWorkflowIdempotencyService < ApplicationService
     return missing_key_result if @idempotency_key.blank?
 
     unless ACTIONS.include?(@action)
-      return error_result("Invalid workflow action: #{@action}", :unprocessable_entity)
+      return error_result(
+        "Invalid workflow action: #{@action}",
+        :unprocessable_entity
+      )
     end
 
     process_request
   rescue ActiveRecord::RecordNotUnique
-    record = ReimbursementIdempotencyRecord.find_by!(
+    record = ReimbursementIdempotencyRecord.find_by(
+      actor_id: @actor.id,
       idempotency_key: stored_key
     )
+
+    raise unless record
 
     response_for(record)
   end
@@ -31,43 +36,45 @@ class ExpenseWorkflowIdempotencyService < ApplicationService
     response = nil
 
     Expense.transaction do
-      @expense.with_lock do
-        record = ReimbursementIdempotencyRecord.find_by(
-          idempotency_key: stored_key
-        )
+      expense = Expense.lock.find(@expense.id)
 
-        if record
-          response = response_for(record)
-          next
-        end
+      record = ReimbursementIdempotencyRecord.find_by(
+        actor_id: @actor.id,
+        idempotency_key: stored_key
+      )
 
-        result = ExpenseWorkflowService.call(
-          expense: @expense,
-          actor: @actor,
-          action: @action
-        )
-
-        if result.success?
-          body = ExpenseSerializer.new(@expense.reload).serialize
-          status = :ok
-        else
-          body = { errors: result.errors }
-          status = :unprocessable_entity
-        end
-
-        record = ReimbursementIdempotencyRecord.create!(
-          idempotency_key: stored_key,
-          expense: @expense,
-          response_body: body,
-          response_status: Rack::Utils.status_code(status)
-        )
-
-        response = {
-          body: record.response_body,
-          status: record.response_status,
-          replayed: false
-        }
+      if record
+        response = response_for(record)
+        next
       end
+
+      result = ExpenseWorkflowService.call(
+        expense: expense,
+        actor: @actor,
+        action: @action
+      )
+
+      if result.success?
+        body = ExpenseSerializer.new(expense).serialize
+        status = :ok
+      else
+        body = { errors: result.errors }
+        status = :unprocessable_entity
+      end
+
+      record = ReimbursementIdempotencyRecord.create!(
+        actor: @actor,
+        idempotency_key: stored_key,
+        expense: expense,
+        response_body: body,
+        response_status: Rack::Utils.status_code(status)
+      )
+
+      response = {
+        body: record.response_body,
+        status: record.response_status,
+        replayed: false
+      }
     end
 
     response
