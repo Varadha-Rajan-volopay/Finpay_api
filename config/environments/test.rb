@@ -5,7 +5,14 @@
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
+  config.active_record.encryption.primary_key =
+    "finpay-test-primary-key-only-not-for-production-2026"
 
+  config.active_record.encryption.deterministic_key =
+    "finpay-test-deterministic-key-only-not-for-production-2026"
+
+  config.active_record.encryption.key_derivation_salt =
+    "finpay-test-key-derivation-salt-only-2026"
   # While tests run files are not watched, reloading is not necessary.
   config.enable_reloading = false
 
@@ -50,4 +57,12 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+  config.hosts.clear
+  config.after_initialize do
+    Bullet.enable = true
+    Bullet.n_plus_one_query_enable = true
+    Bullet.unused_eager_loading_enable = true
+    Bullet.counter_cache_enable = true
+    Bullet.raise = true
+  end
 end

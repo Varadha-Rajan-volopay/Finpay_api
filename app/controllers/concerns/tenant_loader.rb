@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 
 module TenantLoader
   extend ActiveSupport::Concern
@@ -14,30 +15,18 @@ module TenantLoader
     token_company_id = verified_company_id
 
     unless token_company_id.present?
-      render json: {
-        error: "Invalid token: company is missing"
-      }, status: :unauthorized
-
-      return
+      raise Errors::TenantNotFound, "Invalid token: company is missing"
     end
 
     company = Company.find_by(id: token_company_id)
 
     unless company
-      render json: {
-        error: "Company not found"
-      }, status: :unauthorized
-
-      return
+      raise Errors::TenantNotFound, "Company not found"
     end
 
-    Apartment::Tenant.switch(company.subdomain) do
-      yield
-    end
+    Apartment::Tenant.switch(company.subdomain) { yield }
   rescue Apartment::TenantNotFound
-    render json: {
-      error: "Company tenant not found"
-    }, status: :unauthorized
+    raise Errors::TenantNotFound, "Company tenant not found"
   ensure
     Apartment::Tenant.reset
   end
@@ -49,26 +38,26 @@ module TenantLoader
 
     unless token_company_id.present? &&
            current_user.company_id.to_s == token_company_id.to_s
-      render json: {
-        error: "User does not belong to this company"
-      }, status: :forbidden
+      raise Errors::Forbidden, "User does not belong to this company"
     end
   end
 
   def verified_company_id
+    return @verified_company_id if defined?(@verified_company_id)
+
     token = request.headers["Authorization"]&.split(" ")&.last
 
-    return unless token.present?
+    @verified_company_id = if token.present?
+                            payload, = JWT.decode(
+                              token,
+                              Rails.application.secret_key_base,
+                              true,
+                              algorithm: "HS256"
+                            )
 
-    payload, = JWT.decode(
-      token,
-      Rails.application.secret_key_base,
-      true,
-      algorithm: "HS256"
-    )
-
-    payload["company_id"]
+                            payload["company_id"]
+    end
   rescue JWT::DecodeError
-    nil
+    @verified_company_id = nil
   end
 end

@@ -1,8 +1,14 @@
+
+# frozen_string_literal: true
+
 class ApiAuthFailure
-  def self.call(env)
+  def self.call(_env)
     body = {
-      error: "Unauthorized",
-      message: "Invalid, expired, or revoked token"
+      error: {
+        code: "unauthorized",
+        message: "Invalid, expired, or revoked token",
+        details: []
+      }
     }.to_json
 
     [

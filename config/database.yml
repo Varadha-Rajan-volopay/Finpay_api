@@ -5,7 +5,7 @@ default: &default
   port: <%= ENV.fetch("DATABASE_PORT", "5433") %>
   username: <%= ENV.fetch("POSTGRES_USER", "postgres") %>
   password: <%= ENV.fetch("POSTGRES_PASSWORD", "postgres") %>
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  pool: <%= [ENV.fetch("RAILS_MAX_THREADS", 5).to_i, 5].max %>
 
 development:
   <<: *default
@@ -24,7 +24,7 @@ production:
     database: finpay_api_production
     username: finpay_api
     password: <%= ENV["FINPAY_API_DATABASE_PASSWORD"] %>
-    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+    pool: <%= [ENV.fetch("RAILS_MAX_THREADS", 5).to_i, 5].max %>
   cache:
     <<: *primary_production
     database: finpay_api_production_cache
