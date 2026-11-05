@@ -1,6 +1,30 @@
 require "rails_helper"
 
 RSpec.describe "Sensitive data", type: :model do
+    self.use_transactional_tests = false
+
+  around do |example|
+    subdomain = "sensitivedata#{SecureRandom.hex(6)}"
+    company = nil
+
+    begin
+      Companies::Provision.call(
+        name: "Sensitive Data Test Company",
+        subdomain: subdomain
+      ) do |provisioned_company|
+        company = provisioned_company
+        example.run
+      end
+    ensure
+      Apartment::Tenant.reset
+
+      if ActiveRecord::Base.connection.schema_exists?(subdomain)
+        Apartment::Tenant.drop(subdomain)
+      end
+
+      company&.delete
+    end
+  end
   describe "Expense notes encryption" do
     it "stores notes encrypted in the database" do
       expense = create(:expense, notes: "Confidential expense note")

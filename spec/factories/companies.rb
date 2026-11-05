@@ -3,7 +3,7 @@ FactoryBot.define do
     name { Faker::Company.name }
 
     sequence(:subdomain) do |n|
-      "tenant_#{n}"
+      "tenant#{n}#{SecureRandom.hex(4)}"
     end
   end
 end
