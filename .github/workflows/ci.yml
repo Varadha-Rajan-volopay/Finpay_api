@@ -1,4 +1,5 @@
-﻿name: CI
+﻿
+name: CI
 
 on:
   pull_request:
@@ -12,14 +13,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libpq-dev
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+
       - name: Run RuboCop
         run: bundle exec rubocop -f github
 
@@ -29,14 +33,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libpq-dev
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+
       - name: Run Brakeman
         run: bundle exec brakeman --no-pager
 
@@ -46,14 +53,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libpq-dev
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+
       - name: Audit dependencies
         run: bundle exec bundler-audit check --update
 
@@ -76,12 +86,23 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       RAILS_ENV: test
       DATABASE_HOST: 127.0.0.1
       DATABASE_PORT: "5432"
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      REDIS_URL: redis://localhost:6379/0
 
     steps:
       - name: Checkout code

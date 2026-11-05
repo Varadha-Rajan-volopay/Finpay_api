@@ -1,6 +1,15 @@
 class Users::RegistrationsController < Devise::RegistrationsController
   respond_to :json
 
+  rate_limit to: 5,
+             within: 1.hour,
+             by: -> { request.remote_ip },
+             with: -> {
+               render json: {
+                 error: "Too many registration attempts. Please try again later."
+               }, status: :too_many_requests
+             }
+
   skip_before_action :authenticate_user!, raise: false
   skip_before_action :verify_user_company, raise: false
   skip_around_action :with_tenant, raise: false
@@ -31,13 +40,20 @@ class Users::RegistrationsController < Devise::RegistrationsController
         role: user.role
       }
     }, status: :created
+
   rescue ActiveRecord::RecordInvalid => e
     render json: {
       errors: e.record.errors.full_messages
     }, status: :unprocessable_entity
-  rescue ArgumentError => e
+
+  rescue Companies::Provision::TenantSchemaAlreadyExists
     render json: {
-      error: e.message
+      error: "This company subdomain is already registered"
+    }, status: :conflict
+
+  rescue ActiveRecord::RecordNotUnique
+    render json: {
+      error: "This company subdomain is already registered"
     }, status: :conflict
   end
 

@@ -1,4 +1,3 @@
-
 require "rails_helper"
 
 RSpec.describe ApplicationService do
@@ -17,7 +16,7 @@ RSpec.describe ApplicationService do
       expect(result.errors).to be_empty
     end
 
-    it "re-raises unexpected errors" do
+    it "allows unexpected errors to propagate" do
       service_class = Class.new(described_class) do
         def call
           raise StandardError, "Something went wrong"

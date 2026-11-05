@@ -1,0 +1,7 @@
+
+:concurrency: 5
+:max_retries: 5
+
+:queues:
+  - critical
+  - default

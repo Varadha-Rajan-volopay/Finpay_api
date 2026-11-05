@@ -63,8 +63,11 @@ gem "pundit", "~> 2.5"
 gem "strong_migrations"
 gem "fiddle", "~> 1.1"
 
+gem "sidekiq", "~> 8.1"
 gem "alba", "~> 4.0"
 
 gem "kaminari", "~> 1.3"
 
 gem "aasm", "~> 6.0"
+
+gem "sidekiq-cron", "~> 2.4"

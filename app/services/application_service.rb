@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 
 class ApplicationService
   class Result
@@ -24,12 +25,5 @@ class ApplicationService
     return result if result.is_a?(Result)
 
     Result.new(success: true, value: result)
-  rescue ActiveRecord::RecordInvalid, AASM::InvalidTransition => error
-    Result.new(success: false, errors: [ error.message ])
-  rescue StandardError => error
-    Rails.logger.error(
-      "#{name} failed: #{error.class}: #{error.message}"
-    )
-    raise
   end
 end
