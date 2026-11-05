@@ -89,30 +89,35 @@ RSpec.describe ExpenseWorkflowService do
 
     it "does not reimburse a pending expense" do
       with_workflow_tenant do |expense, admin, _employee|
-        result = described_class.call(
-          expense: expense,
-          actor: admin,
-          action: :reimburse
-        )
-
-        expect(result).to be_failure
-        expect(result.errors).to include(
+        expect do
+          described_class.call(
+            expense: expense,
+            actor: admin,
+            action: :reimburse
+          )
+        end.to raise_error(
+          Errors::InvalidTransition,
           "Cannot reimburse an expense from pending status"
         )
+
         expect(expense.reload.status).to eq("pending")
       end
     end
 
     it "rejects an unknown action" do
       with_workflow_tenant do |expense, admin, _employee|
-        result = described_class.call(
-          expense: expense,
-          actor: admin,
-          action: :delete
+        expect do
+          described_class.call(
+            expense: expense,
+            actor: admin,
+            action: :delete
+          )
+        end.to raise_error(
+          Errors::InvalidTransition,
+          "Invalid workflow action: delete"
         )
 
-        expect(result).to be_failure
-        expect(result.errors).to include("Invalid workflow action: delete")
+
         expect(expense.reload.status).to eq("pending")
       end
     end

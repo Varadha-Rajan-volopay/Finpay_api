@@ -1,3 +1,6 @@
+
+# frozen_string_literal: true
+
 class ExpenseWorkflowIdempotencyService < ApplicationService
   ACTIONS = %i[approve reject].freeze
 
@@ -48,17 +51,22 @@ class ExpenseWorkflowIdempotencyService < ApplicationService
         next
       end
 
-      result = ExpenseWorkflowService.call(
-        expense: expense,
-        actor: @actor,
-        action: @action
-      )
+      begin
+        result = ExpenseWorkflowService.call(
+          expense: expense,
+          actor: @actor,
+          action: @action
+        )
 
-      if result.success?
-        body = ExpenseSerializer.new(expense).serialize
-        status = :ok
-      else
-        body = { errors: result.errors }
+        if result.success?
+          body = ExpenseSerializer.new(expense).serialize
+          status = :ok
+        else
+          body = { errors: result.errors }
+          status = :unprocessable_entity
+        end
+      rescue Errors::InvalidTransition => e
+        body = { errors: [ e.message ] }
         status = :unprocessable_entity
       end
 
@@ -100,7 +108,10 @@ class ExpenseWorkflowIdempotencyService < ApplicationService
   end
 
   def missing_key_result
-    error_result("Idempotency-Key header is required", :bad_request)
+    error_result(
+      "Idempotency-Key header is required",
+      :bad_request
+    )
   end
 
   def error_result(message, status)

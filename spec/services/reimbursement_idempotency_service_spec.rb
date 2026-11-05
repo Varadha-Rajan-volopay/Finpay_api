@@ -95,13 +95,14 @@ RSpec.describe ReimbursementIdempotencyService do
           status: "approved"
         )
 
-        result = reimburse(another_expense, admin, "shared-key")
-
-        expect(result.value[:status]).to eq(:unprocessable_entity)
-        expect(result.value[:body][:errors]).to include(
+        expect do
+          reimburse(another_expense, admin, "shared-key")
+        end.to raise_error(
+          Errors::IdempotencyConflict,
           "Idempotency-Key has already been used for another expense"
         )
 
+        expect(Errors::IdempotencyConflict.new.status).to eq(:conflict)
         expect(another_expense.reload.status).to eq("approved")
         expect(ReimbursementIdempotencyRecord.count).to eq(1)
       end

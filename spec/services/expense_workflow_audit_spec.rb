@@ -54,14 +54,20 @@ RSpec.describe ExpenseWorkflowService do
 
     it "does not create an audit log for an invalid transition" do
       with_audit_tenant do |expense, admin|
+        activity_log_count = ActivityLog.count
+
         expect do
           described_class.call(
             expense: expense,
             actor: admin,
             action: :reimburse
           )
-        end.not_to change(ActivityLog, :count)
+        end.to raise_error(
+          Errors::InvalidTransition,
+          "Cannot reimburse an expense from pending status"
+        )
 
+        expect(ActivityLog.count).to eq(activity_log_count)
         expect(expense.reload.status).to eq("pending")
       end
     end

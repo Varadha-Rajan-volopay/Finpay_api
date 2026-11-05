@@ -40,6 +40,8 @@ RSpec.describe "Day 6 background workers" do
   describe AuditLogWorker do
     it "creates only one audit log when the job runs twice" do
       with_worker_tenant do |company, member, _admin, expense|
+        event_time = Time.current.iso8601(6)
+
         args = [
           company.id,
           expense.id,
@@ -47,7 +49,7 @@ RSpec.describe "Day 6 background workers" do
           "create",
           "new",
           "pending",
-          expense.created_at.iso8601(6)
+          event_time
         ]
 
         expect {
@@ -77,6 +79,7 @@ RSpec.describe "Day 6 background workers" do
           "new",
           "pending",
           Time.current.iso8601(6)
+
         )
       }.not_to raise_error
 
@@ -231,6 +234,7 @@ RSpec.describe "Day 6 background workers" do
           "new",
           "pending",
           kind_of(String)
+
         )
 
         # The expense passed into the helper is already committed.
