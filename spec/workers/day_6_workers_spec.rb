@@ -85,6 +85,26 @@ RSpec.describe "Day 6 background workers" do
 
       expect(Apartment::Tenant.current).to eq(original_tenant)
     end
+
+    it "re-raises an audit logging error so Sidekiq can retry" do
+      with_worker_tenant do |company, member, _admin, expense|
+        allow(ActivityLog).to receive(:create_or_find_by!)
+          .and_raise(StandardError, "database unavailable")
+
+        expect {
+          described_class.new.perform(
+            company.id,
+            expense.id,
+            member.id,
+            "create",
+            "new",
+            "pending",
+            Time.current.iso8601(6)
+          )
+        }.to raise_error(StandardError, "database unavailable")
+      end
+    end
+
     it "allows legitimate repeated audit events with different timestamps" do
       with_worker_tenant do |company, member, _admin, expense|
         base_args = [
@@ -148,6 +168,18 @@ RSpec.describe "Day 6 background workers" do
       end
     end
 
+    it "does not mark a completed receipt as failed" do
+      with_worker_tenant do |company, _member, _admin, expense|
+        receipt = create(:receipt, expense: expense, ocr_status: "done")
+
+        described_class.mark_failed(company.id, receipt.id)
+
+        Apartment::Tenant.switch(company.subdomain) do
+          expect(Receipt.find(receipt.id).ocr_status).to eq("done")
+        end
+      end
+    end
+
     it "re-raises a processing error without immediately marking the receipt failed" do
       with_worker_tenant do |company, _member, _admin, expense|
         receipt = create(:receipt, expense: expense)
@@ -187,6 +219,23 @@ RSpec.describe "Day 6 background workers" do
 
 
   describe OverdueReminderWorker do
+    it "logs a tenant processing error without crashing the job" do
+      with_worker_tenant do |company, _member, _admin, _expense|
+        allow(Company).to receive(:find_each).and_yield(company)
+
+        allow(Expense).to receive(:pending)
+          .and_raise(StandardError, "query failed")
+
+        expect(Rails.logger).to receive(:error).with(
+          "OverdueReminderWorker failed for company #{company.id}: StandardError: query failed"
+        )
+
+        expect {
+          described_class.new.perform
+        }.not_to raise_error
+      end
+    end
+
     it "creates one reminder per overdue expense per day" do
       with_worker_tenant do |company, _member, _admin, expense|
         overdue_days = Rails.configuration.x.expense_overdue_days

@@ -1,3 +1,4 @@
+
 # frozen_string_literal: true
 
 class Expense < ApplicationRecord
@@ -8,19 +9,20 @@ class Expense < ApplicationRecord
 
   belongs_to :user
   belongs_to :category
+
   before_destroy :prevent_deletion
 
   belongs_to :approved_by,
-              class_name: "User",
-              optional: true
+             class_name: "User",
+             optional: true
 
   belongs_to :rejected_by,
-              class_name: "User",
-              optional: true
+             class_name: "User",
+             optional: true
 
   belongs_to :reimbursed_by,
-              class_name: "User",
-              optional: true
+             class_name: "User",
+             optional: true
 
   has_many :reimbursement_idempotency_records, dependent: :destroy
   has_many :receipts, dependent: :destroy
@@ -50,6 +52,7 @@ class Expense < ApplicationRecord
       transitions from: :reimbursed, to: :archived
     end
   end
+
   validates :status,
             inclusion: {
               in: %w[pending approved rejected reimbursed archived]
@@ -79,8 +82,7 @@ class Expense < ApplicationRecord
   delegate :name, to: :category, prefix: true
 
   # Converts a user-entered decimal amount into integer minor units.
-  # User input with more than 2 decimal places is rejected, not rounded.
-  # Example: "10.50" INR -> 1050 cents
+  # More than 2 decimal places are rejected, not rounded.
   def self.amount_cents_from(amount, currency:)
     validate_currency!(currency)
 
@@ -101,16 +103,17 @@ class Expense < ApplicationRecord
     (BigDecimal(amount_string) * 100).to_i
   end
 
-  # Converts a calculated monetary amount into integer minor units
+  # Converts calculated monetary amounts into minor units
   # using half-up rounding.
-  #
-  # Example:
-  # "1.005" -> 101 cents
-  # "1.004" -> 100 cents
   def self.round_to_minor_units(amount, currency:)
     validate_currency!(currency)
 
-    decimal_amount = BigDecimal(amount.to_s)
+    decimal_amount = begin
+      BigDecimal(amount.to_s)
+    rescue ArgumentError
+      raise ArgumentError,
+            "Amount must be a finite, non-negative decimal"
+    end
 
     unless decimal_amount.finite? && decimal_amount >= 0
       raise ArgumentError,
@@ -118,9 +121,6 @@ class Expense < ApplicationRecord
     end
 
     (decimal_amount * 100).round(0, BigDecimal::ROUND_HALF_UP).to_i
-  rescue ArgumentError
-    raise ArgumentError,
-          "Amount must be a finite, non-negative decimal"
   end
 
   def self.validate_currency!(currency)
@@ -155,7 +155,10 @@ class Expense < ApplicationRecord
   end
 
   def prevent_deletion
-    errors.add(:base, "Expenses cannot be deleted because audit history must be preserved")
+    errors.add(
+      :base,
+      "Expenses cannot be deleted because audit history must be preserved"
+    )
     throw(:abort)
   end
 end

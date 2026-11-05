@@ -61,12 +61,9 @@ RSpec.describe "Users::Sessions", type: :request do
         }
       }
 
-      puts "LOGIN DEBUG: status=#{response.status}, body=#{response.body}"
-
       expect(response).to have_http_status(:ok)
 
       token = response.headers["Authorization"]&.split(" ")&.last
-
       expect(token).to be_present
 
       payload, = JWT.decode(
@@ -149,7 +146,6 @@ RSpec.describe "Users::Sessions", type: :request do
       expect(response).to have_http_status(:ok)
 
       token = response.headers["Authorization"]&.split(" ")&.last
-
       expect(token).to be_present
 
       payload, = JWT.decode(
@@ -176,6 +172,29 @@ RSpec.describe "Users::Sessions", type: :request do
       }
 
       expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "rejects logout when the Authorization token is missing" do
+      delete "/auth/logout"
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body["error"]).to eq("Missing token")
+    end
+
+    it "rejects logout when the Authorization header is empty" do
+      delete "/auth/logout", headers: {
+        "Authorization" => ""
+      }
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body["error"]).to eq("Missing token")
+    end
+  end
+  describe "GET /auth/login" do
+    it "returns the login endpoint response" do
+      get "/auth/login"
+
+      expect(response).to have_http_status(:ok)
     end
   end
 end
