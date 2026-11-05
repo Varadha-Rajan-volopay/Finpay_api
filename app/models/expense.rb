@@ -8,9 +8,24 @@ class Expense < ApplicationRecord
 
   belongs_to :user
   belongs_to :category
+  before_destroy :prevent_deletion
+
+  belongs_to :approved_by,
+              class_name: "User",
+              optional: true
+
+  belongs_to :rejected_by,
+              class_name: "User",
+              optional: true
+
+  belongs_to :reimbursed_by,
+              class_name: "User",
+              optional: true
 
   has_many :reimbursement_idempotency_records, dependent: :destroy
   has_many :receipts, dependent: :destroy
+  has_many :overdue_reminders, dependent: :restrict_with_error
+  has_many :activity_logs, dependent: :restrict_with_error
 
   aasm column: :status, create_scopes: false do
     state :pending, initial: true
@@ -35,6 +50,10 @@ class Expense < ApplicationRecord
       transitions from: :reimbursed, to: :archived
     end
   end
+  validates :status,
+            inclusion: {
+              in: %w[pending approved rejected reimbursed archived]
+            }
 
   CURRENCIES = %w[INR USD EUR].freeze
 
@@ -126,7 +145,17 @@ class Expense < ApplicationRecord
       "create",
       "new",
       status,
-      Time.current.iso8601(6)
+      created_at.iso8601(6)
     )
+  rescue StandardError => error
+    Rails.logger.error(
+      "Failed to enqueue expense creation audit for expense #{id}: " \
+      "#{error.class}: #{error.message}"
+    )
+  end
+
+  def prevent_deletion
+    errors.add(:base, "Expenses cannot be deleted because audit history must be preserved")
+    throw(:abort)
   end
 end

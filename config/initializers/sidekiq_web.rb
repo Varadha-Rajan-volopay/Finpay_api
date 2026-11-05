@@ -2,6 +2,15 @@
 
 require "sidekiq/web"
 
+require "rack/session/cookie"
+
+Sidekiq::Web.use Rack::Session::Cookie,
+                 key: "_finpay_sidekiq_session",
+                 secret: Rails.application.secret_key_base,
+                 same_site: :lax,
+                 httponly: true,
+                 secure: Rails.env.production?
+
 Sidekiq::Web.use Rack::Auth::Basic do |provided_username, provided_password|
   expected_username =
     ENV["SIDEKIQ_WEB_USERNAME"].presence ||

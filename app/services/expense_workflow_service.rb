@@ -28,7 +28,7 @@ class ExpenseWorkflowService < ApplicationService
 
     result = nil
 
-    Expense.transaction do
+    Expense.transaction(requires_new: true) do
       @expense.with_lock do
         from_state = @expense.status
 

@@ -6,16 +6,38 @@ class ReceiptProcessorWorker
 
   sidekiq_options queue: :default, retry: 5
 
+  sidekiq_retries_exhausted do |job, exception|
+    tenant_id, receipt_id = job["args"]
+
+    Rails.logger.error(
+      "Receipt OCR retries exhausted for receipt #{receipt_id}: #{exception.message}"
+    )
+
+    ReceiptProcessorWorker.mark_failed(tenant_id, receipt_id)
+  end
+
   def perform(tenant_id, receipt_id)
     with_tenant(tenant_id) do
-      receipt = Receipt.find(receipt_id)
+      receipt = Receipt.find_by(id: receipt_id)
 
+      unless receipt
+        Rails.logger.warn(
+          "ReceiptProcessorWorker: Receipt not found for receipt_id=#{receipt_id}; skipping job"
+        )
+        next
+      end
+
+      next if receipt.ocr_status == "done"
+
+      # Commit the processing status before starting OCR.
+      receipt.update!(ocr_status: "processing")
+
+      # OCR runs outside the database lock.
+      fake_ocr_text = "Fake OCR output for #{receipt.file_name}"
+
+      # Lock only while saving the OCR result.
       receipt.with_lock do
         next if receipt.ocr_status == "done"
-
-        receipt.update!(ocr_status: "processing")
-
-        fake_ocr_text = "Fake OCR output for #{receipt.file_name}"
 
         receipt.update!(
           ocr_text: fake_ocr_text,
@@ -23,22 +45,21 @@ class ReceiptProcessorWorker
         )
       end
     end
-  rescue StandardError => error
-    mark_failed(tenant_id, receipt_id)
-    raise error
   end
 
-  private
+  def self.mark_failed(tenant_id, receipt_id)
+    worker = new
 
-  def mark_failed(tenant_id, receipt_id)
-    with_tenant(tenant_id) do
+    worker.send(:with_tenant, tenant_id) do
       receipt = Receipt.find_by(id: receipt_id)
 
       if receipt && receipt.ocr_status != "done"
         receipt.update!(ocr_status: "failed")
       end
     end
-  rescue StandardError
-    # Preserve the original processing error.
+  rescue StandardError => error
+    Rails.logger.error(
+      "Failed to mark receipt #{receipt_id} as failed: #{error.message}"
+    )
   end
 end

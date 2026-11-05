@@ -115,17 +115,23 @@ class ExpensesController < ApplicationController
   end
 
   def approve
-    perform_workflow_action(:approve)
+    perform_idempotent_workflow_action(:approve)
   end
 
   def reject
-    perform_workflow_action(:reject)
+    perform_idempotent_workflow_action(:reject)
   end
 
   def reimburse
     authorize @expense
 
     idempotency_key = request.headers["Idempotency-Key"]
+
+    if idempotency_key.present? && idempotency_key.length > 255
+      return render json: {
+        errors: [ "Idempotency-Key must not exceed 255 characters" ]
+      }, status: :bad_request
+    end
 
     result = ReimbursementIdempotencyService.call(
       expense: @expense,
@@ -184,6 +190,24 @@ class ExpensesController < ApplicationController
 
   def serialized_expense(expense)
     ExpenseSerializer.new(expense).serializable_hash
+  def perform_idempotent_workflow_action(action)
+    authorize @expense
+
+    result = ExpenseWorkflowIdempotencyService.call(
+      expense: @expense,
+      actor: current_user,
+      action: action,
+      idempotency_key: request.headers["Idempotency-Key"]
+    )
+
+    if result.success?
+      render json: result.value[:body],
+            status: result.value[:status]
+    else
+      render json: {
+        errors: result.errors
+      }, status: :unprocessable_entity
+    end
   end
 
   def perform_workflow_action(action)
