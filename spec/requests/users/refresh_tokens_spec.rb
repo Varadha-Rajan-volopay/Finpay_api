@@ -82,6 +82,45 @@ RSpec.describe "Users::RefreshTokens", type: :request do
       expect(new_record.active?).to be(true)
     end
 
+    it "rejects reuse of a revoked refresh token" do
+      old_record, raw_token = issue_refresh_token
+
+      old_record.update!(revoked_at: Time.current)
+
+      post "/auth/refresh", params: {
+        refresh_token: raw_token
+      }
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body["error"]).to eq("Refresh token reuse detected")
+    end
+
+    it "rejects a refresh token when its user no longer exists" do
+      record, raw_token = issue_refresh_token
+
+      record.update!(user_id: -1)
+
+      post "/auth/refresh", params: {
+        refresh_token: raw_token
+      }
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body["error"]).to eq("User not found in this company")
+    end
+
+    it "rejects a refresh token when its company no longer exists" do
+      record, raw_token = issue_refresh_token
+
+      record.update_column(:company_id, -1)
+
+      post "/auth/refresh", params: {
+        refresh_token: raw_token
+      }
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body["error"]).to eq("Company not found")
+    end
+
     it "rejects a missing refresh token" do
       post "/auth/refresh", params: {}
 

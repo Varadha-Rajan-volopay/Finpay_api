@@ -1,7 +1,8 @@
+
 require "rails_helper"
 
 RSpec.describe Expense, type: :model do
-    self.use_transactional_tests = false
+  self.use_transactional_tests = false
 
   around do |example|
     subdomain = "expense_spec#{SecureRandom.hex(6)}"
@@ -25,6 +26,7 @@ RSpec.describe Expense, type: :model do
       company&.delete
     end
   end
+
   describe "Money rules" do
     describe ".amount_cents_from" do
       it "converts a decimal amount into minor units" do
@@ -47,15 +49,79 @@ RSpec.describe Expense, type: :model do
           described_class.amount_cents_from("10.50", currency: "XYZ")
         }.to raise_error(ArgumentError, "Unsupported currency")
       end
+
+      it "rejects negative amounts" do
+        expect {
+          described_class.amount_cents_from("-10.50", currency: "INR")
+        }.to raise_error(ArgumentError)
+      end
+
+      it "rejects non-numeric input" do
+        expect {
+          described_class.amount_cents_from("abc", currency: "INR")
+        }.to raise_error(ArgumentError)
+      end
+
+      it "rejects amounts with a trailing decimal point" do
+        expect {
+          described_class.amount_cents_from("10.", currency: "INR")
+        }.to raise_error(ArgumentError)
+      end
     end
 
-    describe "half-up rounding" do
-      it "rounds a calculated minor-unit amount using half-up" do
-        amount_cents = (
-          BigDecimal("1050") * BigDecimal("0.18")
-        ).round(0, :half_up).to_i
+    describe ".round_to_minor_units" do
+      it "rounds half-up when the third decimal is 5" do
+        expect(
+          described_class.round_to_minor_units("1.005", currency: "INR")
+        ).to eq(101)
+      end
 
-        expect(amount_cents).to eq(189)
+      it "does not round up when the third decimal is below 5" do
+        expect(
+          described_class.round_to_minor_units("1.004", currency: "INR")
+        ).to eq(100)
+      end
+
+      it "rejects negative amounts" do
+        expect {
+          described_class.round_to_minor_units("-10.50", currency: "INR")
+        }.to raise_error(
+          ArgumentError,
+          "Amount must be a finite, non-negative decimal"
+        )
+      end
+
+      it "rejects NaN amounts" do
+        expect {
+          described_class.round_to_minor_units("NaN", currency: "INR")
+        }.to raise_error(
+          ArgumentError,
+          "Amount must be a finite, non-negative decimal"
+        )
+      end
+
+      it "rejects infinite amounts" do
+        expect {
+          described_class.round_to_minor_units("Infinity", currency: "INR")
+        }.to raise_error(
+          ArgumentError,
+          "Amount must be a finite, non-negative decimal"
+        )
+      end
+
+      it "rejects invalid decimal input" do
+        expect {
+          described_class.round_to_minor_units("abc", currency: "INR")
+        }.to raise_error(
+          ArgumentError,
+          "Amount must be a finite, non-negative decimal"
+        )
+      end
+
+      it "rejects unsupported currencies" do
+        expect {
+          described_class.round_to_minor_units("10.50", currency: "XYZ")
+        }.to raise_error(ArgumentError, "Unsupported currency")
       end
     end
 
@@ -140,7 +206,10 @@ RSpec.describe Expense, type: :model do
       user = pending_expense.user
 
       expect(described_class.for_user(user)).to include(pending_expense)
-      expect(described_class.for_user(user)).not_to include(approved_expense) if approved_expense.user != user
+
+      if approved_expense.user != user
+        expect(described_class.for_user(user)).not_to include(approved_expense)
+      end
     end
 
     it "returns expenses for a month" do

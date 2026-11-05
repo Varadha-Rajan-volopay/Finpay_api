@@ -12,5 +12,9 @@ FactoryBot.define do
     role { :member }
 
     jti { SecureRandom.uuid }
+
+    trait :admin do
+      role { :admin }
+    end
   end
 end

@@ -2,6 +2,7 @@ require "rails_helper"
 
 RSpec.describe ExpenseWorkflowService do
   self.use_transactional_tests = false
+
   def with_workflow_tenant
     subdomain = "workflow#{SecureRandom.hex(4)}"
 
@@ -101,6 +102,80 @@ RSpec.describe ExpenseWorkflowService do
         )
 
         expect(expense.reload.status).to eq("pending")
+      end
+    end
+
+    it "does not approve an already approved expense" do
+      with_workflow_tenant do |expense, admin, _employee|
+        expense.update!(status: "approved")
+
+        expect do
+          described_class.call(
+            expense: expense,
+            actor: admin,
+            action: :approve
+          )
+        end.to raise_error(
+          Errors::InvalidTransition,
+          "Cannot approve an expense from approved status"
+        )
+
+        expect(expense.reload.status).to eq("approved")
+      end
+    end
+
+    it "does not reject an already approved expense" do
+      with_workflow_tenant do |expense, admin, _employee|
+        expense.update!(status: "approved")
+
+        expect do
+          described_class.call(
+            expense: expense,
+            actor: admin,
+            action: :reject
+          )
+        end.to raise_error(
+          Errors::InvalidTransition,
+          "Cannot reject an expense from approved status"
+        )
+
+        expect(expense.reload.status).to eq("approved")
+      end
+    end
+
+    it "does not archive a pending expense" do
+      with_workflow_tenant do |expense, admin, _employee|
+        expect do
+          described_class.call(
+            expense: expense,
+            actor: admin,
+            action: :archive
+          )
+        end.to raise_error(
+          Errors::InvalidTransition,
+          "Cannot archive an expense from pending status"
+        )
+
+        expect(expense.reload.status).to eq("pending")
+      end
+    end
+
+    it "rolls back the workflow transition when activity logging fails" do
+      with_workflow_tenant do |expense, admin, _employee|
+        allow(ActivityLog).to receive(:create!)
+          .and_raise(ActiveRecord::RecordInvalid.new(ActivityLog.new))
+
+        expect do
+          described_class.call(
+            expense: expense,
+            actor: admin,
+            action: :approve
+          )
+        end.to raise_error(ActiveRecord::RecordInvalid)
+
+        expect(expense.reload.status).to eq("pending")
+        expect(expense.reload.approved_by_id).to be_nil
+        expect(expense.reload.approved_at).to be_nil
       end
     end
 

@@ -117,6 +117,46 @@ RSpec.describe ExpenseWorkflowIdempotencyService do
       end
     end
 
+    it "stores and replays an invalid transition response" do
+      with_idempotency_tenant do |expense, admin, _employee, _category|
+        expense.update!(status: "approved")
+        key = "invalid-transition-key"
+
+        first_result = workflow_action(expense, admin, :approve, key)
+        second_result = workflow_action(expense, admin, :approve, key)
+
+        expect(first_result.value[:status]).to eq(422)
+        expect(first_result.value[:body]["errors"]).to include(
+          "Cannot approve an expense from approved status"
+        )
+
+        expect(second_result.value[:status]).to eq(422)
+        expect(second_result.value[:body]).to eq(first_result.value[:body])
+        expect(second_result.value[:replayed]).to be(true)
+
+        expect(ReimbursementIdempotencyRecord.count).to eq(1)
+        expect(expense.reload.status).to eq("approved")
+      end
+    end
+
+    it "rolls back the expense transition when idempotency record creation fails" do
+      with_idempotency_tenant do |expense, admin, _employee, _category|
+        allow(ReimbursementIdempotencyRecord).to receive(:create!)
+          .and_raise(
+            ActiveRecord::RecordInvalid.new(ReimbursementIdempotencyRecord.new)
+          )
+
+        expect do
+          workflow_action(expense, admin, :approve, "rollback-test-key")
+        end.to raise_error(ActiveRecord::RecordInvalid)
+
+        expect(expense.reload.status).to eq("pending")
+        expect(expense.reload.approved_by_id).to be_nil
+        expect(expense.reload.approved_at).to be_nil
+        expect(ReimbursementIdempotencyRecord.count).to eq(0)
+      end
+    end
+
     it "keeps approval and rejection keys separate" do
       with_idempotency_tenant do |expense, admin, _employee, _category|
         key = "shared-action-key"

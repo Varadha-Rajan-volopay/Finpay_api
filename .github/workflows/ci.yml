@@ -1,4 +1,4 @@
-﻿
+
 name: CI
 
 on:
@@ -103,6 +103,7 @@ jobs:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       REDIS_URL: redis://localhost:6379/0
+      COVERAGE_ENFORCE: "true"
 
     steps:
       - name: Checkout code

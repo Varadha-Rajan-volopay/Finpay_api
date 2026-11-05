@@ -553,6 +553,26 @@ RSpec.describe "Expenses", type: :request do
   end
 
   describe "PATCH /expenses/:id" do
+    describe "PUT /expenses/:id" do
+      it "updates an expense using PUT" do
+        expense = create_expense(user: user_a)
+
+        put "/expenses/#{expense.id}",
+            params: {
+              expense: {
+                title: "Updated using PUT"
+              }
+            },
+            headers: auth_headers(user_a)
+
+        expect(response).to have_http_status(:ok)
+
+        Apartment::Tenant.switch(company_a.subdomain) do
+          expect(expense.reload.title).to eq("Updated using PUT")
+        end
+      end
+    end
+
     it "allows the owner to update a pending expense" do
       expense = create_expense(user: user_a)
 

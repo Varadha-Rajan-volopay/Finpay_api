@@ -9,5 +9,9 @@ FactoryBot.define do
     status { "pending" }
     incurred_on { Date.current }
     notes { "Lunch expense" }
+
+    trait :approved do
+      status { "approved" }
+    end
   end
 end
