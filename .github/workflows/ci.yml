@@ -1,4 +1,4 @@
-
+﻿
 name: CI
 
 on:
@@ -124,3 +124,9 @@ jobs:
 
       - name: Run RSpec
         run: bundle exec rspec
+
+      - name: Generate OpenAPI documentation
+        run: bundle exec rails rswag:specs:swaggerize
+
+      - name: Verify OpenAPI documentation is up to date
+        run: git diff --exit-code -- swagger/v1/swagger.yaml

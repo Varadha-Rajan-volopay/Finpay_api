@@ -130,7 +130,7 @@ RSpec.describe "Expenses", type: :request do
       own_expense = create_expense(user: user_a)
       create_expense(user: admin_a, title: "Admin expense")
 
-      get "/expenses", headers: auth_headers(user_a)
+      get "/api/v1/expenses", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok),
         "Expected 200, but got #{response.status}: #{response.body}"
@@ -147,7 +147,7 @@ RSpec.describe "Expenses", type: :request do
     it "allows an admin to see expenses belonging to users in the tenant" do
       member_expense = create_expense(user: user_a)
 
-      get "/expenses", headers: auth_headers(admin_a)
+      get "/api/v1/expenses", headers: auth_headers(admin_a)
 
       expect(response).to have_http_status(:ok)
 
@@ -160,7 +160,7 @@ RSpec.describe "Expenses", type: :request do
     it "does not return expenses belonging to another tenant" do
       expense_from_company_b = create_expense(user: user_b)
 
-      get "/expenses", headers: auth_headers(user_a)
+      get "/api/v1/expenses", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok)
 
@@ -173,7 +173,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 422 for an invalid status filter" do
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { status: "not_a_status" },
           headers: auth_headers(user_a)
 
@@ -185,7 +185,7 @@ RSpec.describe "Expenses", type: :request do
       matching_expense = create_expense(user: user_a)
       other_expense = create_expense(user: user_a)
 
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { category_id: matching_expense.category_id },
           headers: auth_headers(user_a)
 
@@ -209,7 +209,7 @@ RSpec.describe "Expenses", type: :request do
         status: "approved"
       )
 
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { status: "pending" },
           headers: auth_headers(user_a)
 
@@ -231,7 +231,7 @@ RSpec.describe "Expenses", type: :request do
         earlier_expense.update!(incurred_on: Date.new(2026, 10, 5))
       end
 
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { from: "2026-10-15" },
           headers: auth_headers(user_a)
 
@@ -253,7 +253,7 @@ RSpec.describe "Expenses", type: :request do
         later_expense.update!(incurred_on: Date.new(2026, 10, 25))
       end
 
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { to: "2026-10-15" },
           headers: auth_headers(user_a)
 
@@ -267,7 +267,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 422 for an invalid from date" do
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { from: "not-a-date" },
           headers: auth_headers(user_a)
 
@@ -275,7 +275,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 422 for an invalid to date" do
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { to: "2026-02-30" },
           headers: auth_headers(user_a)
 
@@ -283,7 +283,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 422 when from is later than to" do
-      get "/expenses",
+      get "/api/v1/expenses",
           params: {
             from: "2026-10-20",
             to: "2026-10-10"
@@ -294,7 +294,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 422 for an invalid category_id" do
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { category_id: "invalid" },
           headers: auth_headers(user_a)
 
@@ -302,7 +302,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 422 for an unknown filter" do
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { unknown_filter: "value" },
           headers: auth_headers(user_a)
 
@@ -314,7 +314,7 @@ RSpec.describe "Expenses", type: :request do
         create_expense(user: user_a, title: "Expense #{index}")
       end
 
-      get "/expenses", headers: auth_headers(user_a)
+      get "/api/v1/expenses", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok)
 
@@ -340,7 +340,7 @@ RSpec.describe "Expenses", type: :request do
         end
       end
 
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { per: 150 },
           headers: auth_headers(user_a)
 
@@ -361,7 +361,7 @@ RSpec.describe "Expenses", type: :request do
         )
       end
 
-      get "/expenses", headers: auth_headers(user_a)
+      get "/api/v1/expenses", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok)
     end
@@ -371,7 +371,7 @@ RSpec.describe "Expenses", type: :request do
         create_expense(user: user_a, title: "Expense #{index}")
       end
 
-      get "/expenses",
+      get "/api/v1/expenses",
           params: {
             pagination: "keyset",
             per: 2
@@ -389,7 +389,7 @@ RSpec.describe "Expenses", type: :request do
       first_cursor = first_body["meta"]["next_cursor"]
       expect(first_cursor).to be_present
 
-      get "/expenses",
+      get "/api/v1/expenses",
           params: {
             pagination: "keyset",
             per: 2,
@@ -408,7 +408,7 @@ RSpec.describe "Expenses", type: :request do
       second_cursor = second_body["meta"]["next_cursor"]
       expect(second_cursor).to be_present
 
-      get "/expenses",
+      get "/api/v1/expenses",
           params: {
             pagination: "keyset",
             per: 2,
@@ -442,7 +442,7 @@ RSpec.describe "Expenses", type: :request do
     it "allows a member to view their own expense" do
       expense = create_expense(user: user_a)
 
-      get "/expenses/#{expense.id}", headers: auth_headers(user_a)
+      get "/api/v1/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:ok)
       expect(expense_data_from_body(decoded_response_body)["id"]).to eq(expense.id)
@@ -451,7 +451,7 @@ RSpec.describe "Expenses", type: :request do
     it "does not allow a member to view another member's expense" do
       expense = create_expense(user: admin_a)
 
-      get "/expenses/#{expense.id}", headers: auth_headers(user_a)
+      get "/api/v1/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:not_found)
     end
@@ -459,7 +459,7 @@ RSpec.describe "Expenses", type: :request do
     it "does not expose an expense from another tenant" do
       expense = create_expense(user: user_b)
 
-      get "/expenses/#{expense.id}", headers: auth_headers(user_a)
+      get "/api/v1/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:not_found)
     end
@@ -471,7 +471,7 @@ RSpec.describe "Expenses", type: :request do
         create(:category)
       end
 
-      post "/expenses",
+      post "/api/v1/expenses",
            params: {
              expense: {
                title: "Office supplies",
@@ -495,7 +495,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 400 when expense parameters are missing" do
-      post "/expenses", headers: auth_headers(user_a)
+      post "/api/v1/expenses", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:bad_request)
       expect(decoded_response_body.dig("error", "code")).to eq("bad_request")
@@ -506,7 +506,7 @@ RSpec.describe "Expenses", type: :request do
         create(:category)
       end
 
-      post "/expenses",
+      post "/api/v1/expenses",
            params: {
              expense: {
                title: "",
@@ -531,7 +531,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 400 for an invalid per parameter" do
-      get "/expenses",
+      get "/api/v1/expenses",
           params: { per: "invalid" },
           headers: auth_headers(user_a)
 
@@ -540,7 +540,7 @@ RSpec.describe "Expenses", type: :request do
     end
 
     it "returns 400 for an invalid keyset cursor" do
-      get "/expenses",
+      get "/api/v1/expenses",
           params: {
             pagination: "keyset",
             cursor: "invalid-cursor"
@@ -557,7 +557,7 @@ RSpec.describe "Expenses", type: :request do
       it "updates an expense using PUT" do
         expense = create_expense(user: user_a)
 
-        put "/expenses/#{expense.id}",
+        put "/api/v1/expenses/#{expense.id}",
             params: {
               expense: {
                 title: "Updated using PUT"
@@ -576,7 +576,7 @@ RSpec.describe "Expenses", type: :request do
     it "allows the owner to update a pending expense" do
       expense = create_expense(user: user_a)
 
-      patch "/expenses/#{expense.id}",
+      patch "/api/v1/expenses/#{expense.id}",
             params: {
               expense: {
                 title: "Updated lunch",
@@ -592,7 +592,7 @@ RSpec.describe "Expenses", type: :request do
     it "does not allow a member to update another member's expense" do
       expense = create_expense(user: admin_a)
 
-      patch "/expenses/#{expense.id}",
+      patch "/api/v1/expenses/#{expense.id}",
             params: {
               expense: {
                 title: "Unauthorized update"
@@ -606,7 +606,7 @@ RSpec.describe "Expenses", type: :request do
     it "does not allow the owner to update a non-pending expense" do
       expense = create_expense(user: user_a, status: "approved")
 
-      patch "/expenses/#{expense.id}",
+      patch "/api/v1/expenses/#{expense.id}",
             params: {
               expense: {
                 title: "Changed title"
@@ -622,7 +622,7 @@ RSpec.describe "Expenses", type: :request do
     it "does not allow an expense to be permanently deleted" do
       expense = create_expense(user: user_a)
 
-      delete "/expenses/#{expense.id}", headers: auth_headers(user_a)
+      delete "/api/v1/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:unprocessable_entity)
 
@@ -634,7 +634,7 @@ RSpec.describe "Expenses", type: :request do
     it "does not allow a member to delete another member's expense" do
       expense = create_expense(user: admin_a)
 
-      delete "/expenses/#{expense.id}", headers: auth_headers(user_a)
+      delete "/api/v1/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:not_found)
     end
@@ -642,7 +642,7 @@ RSpec.describe "Expenses", type: :request do
     it "does not allow the owner to delete a non-pending expense" do
       expense = create_expense(user: user_a, status: "approved")
 
-      delete "/expenses/#{expense.id}", headers: auth_headers(user_a)
+      delete "/api/v1/expenses/#{expense.id}", headers: auth_headers(user_a)
 
       expect(response).to have_http_status(:forbidden)
     end
@@ -652,7 +652,7 @@ RSpec.describe "Expenses", type: :request do
       it "allows an admin to approve another user's pending expense" do
         expense = create_expense(user: user_a)
 
-        post "/expenses/#{expense.id}/approve",
+        post "/api/v1/expenses/#{expense.id}/approve",
             headers: auth_headers(admin_a).merge(
               "Idempotency-Key" => SecureRandom.uuid
         )
@@ -667,7 +667,7 @@ RSpec.describe "Expenses", type: :request do
       it "does not allow a member to approve an expense" do
         expense = create_expense(user: user_a)
 
-        post "/expenses/#{expense.id}/approve",
+        post "/api/v1/expenses/#{expense.id}/approve",
              headers: auth_headers(user_a)
 
         expect(response).to have_http_status(:forbidden)
@@ -680,7 +680,7 @@ RSpec.describe "Expenses", type: :request do
       it "does not allow an admin to approve their own expense" do
         expense = create_expense(user: admin_a)
 
-        post "/expenses/#{expense.id}/approve",
+        post "/api/v1/expenses/#{expense.id}/approve",
              headers: auth_headers(admin_a)
 
         expect(response).to have_http_status(:forbidden)
@@ -695,7 +695,7 @@ RSpec.describe "Expenses", type: :request do
       it "allows an admin to reject a pending expense" do
         expense = create_expense(user: user_a)
 
-        post "/expenses/#{expense.id}/reject",
+        post "/api/v1/expenses/#{expense.id}/reject",
              headers: auth_headers(admin_a).merge(
               "Idempotency-Key" => SecureRandom.uuid
         )
@@ -710,7 +710,7 @@ RSpec.describe "Expenses", type: :request do
       it "does not allow a member to reject an expense" do
         expense = create_expense(user: user_a)
 
-        post "/expenses/#{expense.id}/reject",
+        post "/api/v1/expenses/#{expense.id}/reject",
              headers: auth_headers(user_a)
 
         expect(response).to have_http_status(:forbidden)
@@ -725,7 +725,7 @@ RSpec.describe "Expenses", type: :request do
       it "allows an admin to reimburse an approved expense" do
         expense = create_expense(user: user_a, status: "approved")
 
-        post "/expenses/#{expense.id}/reimburse",
+        post "/api/v1/expenses/#{expense.id}/reimburse",
              headers: auth_headers(admin_a).merge(
                "Idempotency-Key" => SecureRandom.uuid
              )
@@ -747,7 +747,7 @@ RSpec.describe "Expenses", type: :request do
           )
         )
 
-        post "/expenses/#{expense.id}/reimburse",
+        post "/api/v1/expenses/#{expense.id}/reimburse",
             headers: auth_headers(admin_a).merge(
               "Idempotency-Key" => SecureRandom.uuid
             )
@@ -765,7 +765,7 @@ RSpec.describe "Expenses", type: :request do
       it "returns bad request when the idempotency key is missing" do
         expense = create_expense(user: user_a, status: "approved")
 
-        post "/expenses/#{expense.id}/reimburse",
+        post "/api/v1/expenses/#{expense.id}/reimburse",
              headers: auth_headers(admin_a)
 
         expect(response).to have_http_status(:bad_request)
@@ -794,12 +794,12 @@ RSpec.describe "Expenses", type: :request do
           "Idempotency-Key" => idempotency_key
         )
 
-        post "/expenses/#{expense.id}/reimburse", headers: headers
+        post "/api/v1/expenses/#{expense.id}/reimburse", headers: headers
 
         expect(response).to have_http_status(:ok)
         first_response_body = response.body
 
-        post "/expenses/#{expense.id}/reimburse", headers: headers
+        post "/api/v1/expenses/#{expense.id}/reimburse", headers: headers
 
         expect(response).to have_http_status(:ok)
         expect(JSON.parse(response.body)).to eq(JSON.parse(first_response_body))
@@ -816,7 +816,7 @@ RSpec.describe "Expenses", type: :request do
       it "does not allow a member to reimburse an expense" do
         expense = create_expense(user: user_a, status: "approved")
 
-        post "/expenses/#{expense.id}/reimburse",
+        post "/api/v1/expenses/#{expense.id}/reimburse",
              headers: auth_headers(user_a).merge(
                "Idempotency-Key" => SecureRandom.uuid
              )
@@ -833,7 +833,7 @@ RSpec.describe "Expenses", type: :request do
       it "allows an admin to archive a reimbursed expense" do
         expense = create_expense(user: user_a, status: "reimbursed")
 
-        post "/expenses/#{expense.id}/archive",
+        post "/api/v1/expenses/#{expense.id}/archive",
              headers: auth_headers(admin_a)
 
         expect(response).to have_http_status(:ok)
@@ -846,7 +846,7 @@ RSpec.describe "Expenses", type: :request do
       it "does not allow a member to archive an expense" do
         expense = create_expense(user: user_a, status: "reimbursed")
 
-        post "/expenses/#{expense.id}/archive",
+        post "/api/v1/expenses/#{expense.id}/archive",
              headers: auth_headers(user_a)
 
         expect(response).to have_http_status(:forbidden)

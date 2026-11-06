@@ -21,7 +21,7 @@
           "raw": "{\n  \"company\": {\n    \"name\": \"Acme Corporation\",\n    \"subdomain\": \"acme\"\n  },\n  \"user\": {\n    \"name\": \"Admin User\",\n    \"email\": \"admin.acme@example.com\",\n    \"password\": \"Password@123\",\n    \"password_confirmation\": \"Password@123\",\n    \"role\": \"admin\"\n  }\n}"
         },
         "url": {
-          "raw": "http://localhost:3000/auth/register",
+          "raw": "http://localhost:3000/api/v1/auth/register",
           "protocol": "http",
           "host": ["localhost"],
           "port": "3000",
@@ -44,7 +44,7 @@
           "raw": "{\n  \"company\": {\n    \"subdomain\": \"acme\"\n  },\n  \"user\": {\n    \"email\": \"admin.acme@example.com\",\n    \"password\": \"Password@123\"\n  }\n}"
         },
         "url": {
-          "raw": "http://localhost:3000/auth/login",
+          "raw": "http://localhost:3000/api/v1/auth/login",
           "protocol": "http",
           "host": ["localhost"],
           "port": "3000",
@@ -67,7 +67,7 @@
           "raw": "{\n  \"refresh_token\": \"PASTE_REFRESH_TOKEN_FROM_LOGIN\"\n}"
         },
         "url": {
-          "raw": "http://localhost:3000/auth/refresh",
+          "raw": "http://localhost:3000/api/v1/auth/refresh",
           "protocol": "http",
           "host": ["localhost"],
           "port": "3000",
@@ -94,7 +94,7 @@
           "raw": "{\n  \"refresh_token\": \"PASTE_REFRESH_TOKEN_FROM_LOGIN\"\n}"
         },
         "url": {
-          "raw": "http://localhost:3000/auth/logout",
+          "raw": "http://localhost:3000/api/v1/auth/logout",
           "protocol": "http",
           "host": ["localhost"],
           "port": "3000",
@@ -113,7 +113,7 @@
           }
         ],
         "url": {
-          "raw": "http://localhost:3000/auth/me",
+          "raw": "http://localhost:3000/api/v1/auth/me",
           "protocol": "http",
           "host": ["localhost"],
           "port": "3000",

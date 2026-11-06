@@ -69,7 +69,7 @@ RSpec.describe "API error responses", type: :request do
   end
 
   it "returns a consistent 401 response for unauthenticated requests" do
-    get "/expenses"
+    get "/api/v1/expenses"
 
     expect(response).to have_http_status(:unauthorized)
     expect_standard_error("tenant_not_found")
@@ -81,7 +81,7 @@ RSpec.describe "API error responses", type: :request do
       create(:expense, user: member, category: category)
     end
 
-    post "/expenses/#{expense.id}/approve",
+    post "/api/v1/expenses/#{expense.id}/approve",
          headers: auth_headers(member)
 
     expect(response).to have_http_status(:forbidden)
@@ -89,7 +89,7 @@ RSpec.describe "API error responses", type: :request do
   end
 
   it "returns a consistent 404 response for missing expenses" do
-    get "/expenses/999999999",
+    get "/api/v1/expenses/999999999",
         headers: auth_headers(member)
 
     expect(response).to have_http_status(:not_found)
@@ -97,7 +97,7 @@ RSpec.describe "API error responses", type: :request do
   end
 
   it "returns a consistent 422 response for invalid filters" do
-    get "/expenses",
+    get "/api/v1/expenses",
         params: { status: "invalid_status" },
         headers: auth_headers(member)
 
@@ -106,7 +106,7 @@ RSpec.describe "API error responses", type: :request do
   end
 
   it "does not expose SQL statements or stack traces in error responses" do
-    get "/expenses",
+    get "/api/v1/expenses",
         params: { status: "invalid_status" },
         headers: auth_headers(member)
 
@@ -117,7 +117,7 @@ RSpec.describe "API error responses", type: :request do
     )
   end
   it "returns a consistent 400 response when the expense parameter is missing" do
-    post "/expenses",
+    post "/api/v1/expenses",
         params: {},
         headers: auth_headers(member)
 
@@ -145,7 +145,7 @@ RSpec.describe "API error responses", type: :request do
       "HS256"
     )
 
-    get "/expenses",
+    get "/api/v1/expenses",
         headers: { "Authorization" => "Bearer #{invalid_token}" }
 
     expect(response).to have_http_status(:unauthorized)
@@ -159,7 +159,7 @@ RSpec.describe "API error responses", type: :request do
 
     allow(ExpenseFilter).to receive(:new).and_raise(error)
 
-    get "/expenses",
+    get "/api/v1/expenses",
         headers: auth_headers(member)
 
     expect(response).to have_http_status(:conflict)
@@ -170,7 +170,7 @@ RSpec.describe "API error responses", type: :request do
     allow(ExpenseFilter).to receive(:new)
       .and_raise(ActiveRecord::RecordNotUnique, "duplicate record")
 
-    get "/expenses", headers: auth_headers(member)
+    get "/api/v1/expenses", headers: auth_headers(member)
 
     expect(response).to have_http_status(:conflict)
     expect_standard_error("conflict")
@@ -180,7 +180,7 @@ RSpec.describe "API error responses", type: :request do
     allow(ExpenseFilter).to receive(:new)
       .and_raise(ActiveRecord::InvalidForeignKey, "invalid foreign key")
 
-    get "/expenses", headers: auth_headers(member)
+    get "/api/v1/expenses", headers: auth_headers(member)
 
     expect(response).to have_http_status(:conflict)
     expect_standard_error("conflict")
@@ -193,7 +193,7 @@ RSpec.describe "API error responses", type: :request do
     expect(Rails.logger).to receive(:error)
       .with(/Unhandled StandardError: internal database details/)
 
-    get "/expenses", headers: auth_headers(member)
+    get "/api/v1/expenses", headers: auth_headers(member)
 
     expect(response).to have_http_status(:internal_server_error)
     expect_standard_error("internal_server_error")
@@ -215,7 +215,7 @@ RSpec.describe "API error responses", type: :request do
         )
       )
 
-    post "/expenses/#{expense.id}/archive",
+    post "/api/v1/expenses/#{expense.id}/archive",
         headers: auth_headers(admin)
 
     expect(response).to have_http_status(:unprocessable_entity)
