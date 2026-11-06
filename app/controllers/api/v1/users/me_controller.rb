@@ -1,6 +1,5 @@
  module Api
   module V1
-
     class Users::MeController < ApplicationController
       def show
         authorize current_user, :show?
@@ -16,4 +15,4 @@
       end
     end
   end
-end
+ end

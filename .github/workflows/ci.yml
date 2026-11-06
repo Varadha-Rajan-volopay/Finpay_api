@@ -126,6 +126,8 @@ jobs:
         run: bundle exec rspec
 
       - name: Generate OpenAPI documentation
+        env:
+          COVERAGE_ENFORCE: "false"
         run: bundle exec rails rswag:specs:swaggerize
 
       - name: Verify OpenAPI documentation is up to date

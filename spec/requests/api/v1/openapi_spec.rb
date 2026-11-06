@@ -3,7 +3,6 @@
 require "swagger_helper"
 
 RSpec.describe "FinpayAPI V1", type: :request do
-
   before do
     self.use_transactional_tests = false if
       RSpec.current_example.metadata[:full_description].include?("Register a company")
@@ -27,7 +26,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
         properties: {
           company: {
             type: :object,
-            required: ["subdomain"],
+            required: [ "subdomain" ],
             properties: {
               subdomain: { type: :string, example: "acme" }
             }
@@ -90,7 +89,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Authentication"
       operationId "logout"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       response "200", "Logout successful" do
         schema type: :object,
@@ -231,7 +230,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
 
       parameter name: :body, in: :body, required: true, schema: {
         type: :object,
-        required: ["refresh_token"],
+        required: [ "refresh_token" ],
         properties: {
           refresh_token: { type: :string }
         }
@@ -269,7 +268,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Authentication"
       operationId "currentUser"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       response "200", "Current user returned" do
         schema type: :object,
@@ -302,7 +301,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Expenses"
       operationId "listExpenses"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       parameter name: :category_id, in: :query, type: :integer, required: false
       parameter name: :status, in: :query, type: :string, required: false
@@ -356,11 +355,11 @@ RSpec.describe "FinpayAPI V1", type: :request do
       operationId "createExpense"
       consumes "application/json"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       parameter name: :body, in: :body, required: true, schema: {
         type: :object,
-        required: ["expense"],
+        required: [ "expense" ],
         properties: {
           expense: {
             type: :object,
@@ -414,7 +413,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Expenses"
       operationId "getExpense"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       response "200", "Expense returned" do
         schema type: :object,
@@ -446,11 +445,11 @@ RSpec.describe "FinpayAPI V1", type: :request do
       operationId "updateExpense"
       consumes "application/json"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       parameter name: :body, in: :body, required: true, schema: {
         type: :object,
-        required: ["expense"],
+        required: [ "expense" ],
         properties: {
           expense: {
             type: :object,
@@ -500,11 +499,11 @@ RSpec.describe "FinpayAPI V1", type: :request do
       operationId "replaceExpense"
       consumes "application/json"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       parameter name: :body, in: :body, required: true, schema: {
         type: :object,
-        required: ["expense"],
+        required: [ "expense" ],
         properties: {
           expense: {
             type: :object,
@@ -553,7 +552,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Expenses"
       operationId "deleteExpense"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       response "204", "Expense deletion completed" do
       end
@@ -590,7 +589,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Expense Workflow"
       operationId "approveExpense"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       response "200", "Expense approved" do
         schema type: :object
@@ -628,7 +627,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Expense Workflow"
       operationId "rejectExpense"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       response "200", "Expense rejected" do
         schema type: :object
@@ -667,7 +666,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Expense Workflow"
       operationId "reimburseExpense"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       response "200", "Expense reimbursed" do
         schema type: :object
@@ -707,7 +706,7 @@ RSpec.describe "FinpayAPI V1", type: :request do
       tags "Expense Workflow"
       operationId "archiveExpense"
       produces "application/json"
-      security [{ bearerAuth: [] }]
+      security [ { bearerAuth: [] } ]
 
       response "200", "Expense archived" do
         schema type: :object,

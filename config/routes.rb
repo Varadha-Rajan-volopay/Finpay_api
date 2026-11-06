@@ -1,8 +1,8 @@
 require "sidekiq/web"
 
 Rails.application.routes.draw do
-  mount Rswag::Ui::Engine => '/api-docs'
-  mount Rswag::Api::Engine => '/api-docs'
+  mount Rswag::Ui::Engine => "/api-docs"
+  mount Rswag::Api::Engine => "/api-docs"
   mount Sidekiq::Web => "/sidekiq"
 
   devise_for :users,
@@ -11,7 +11,7 @@ Rails.application.routes.draw do
                sign_in: "login",
                sign_out: "logout"
              },
-             skip: [:registrations, :passwords],
+             skip: [ :registrations, :passwords ],
              controllers: {
                sessions: "api/v1/users/sessions"
              }

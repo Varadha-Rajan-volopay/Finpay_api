@@ -5,9 +5,9 @@ require "digest"
 
 redis_url = if Rails.env.production?
               ENV.fetch("REDIS_URL")
-            else
+else
               ENV.fetch("REDIS_URL", "redis://localhost:6380/0")
-            end
+end
 
 Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
   url: redis_url,
@@ -55,6 +55,6 @@ Rack::Attack.throttled_responder = lambda do |request|
       "Content-Type" => "application/json",
       "Retry-After" => retry_after
     },
-    [body]
+    [ body ]
   ]
 end

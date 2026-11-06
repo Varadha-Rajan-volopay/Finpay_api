@@ -36,6 +36,5 @@ module FinpayApi
       "X-Frame-Options" => "DENY",
       "Referrer-Policy" => "strict-origin-when-cross-origin"
     }
-
   end
 end

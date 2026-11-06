@@ -43,7 +43,7 @@ RSpec.configure do |config|
                 required: %w[code message details]
               }
             },
-            required: ["error"]
+            required: [ "error" ]
           }
         },
         Expense: {
