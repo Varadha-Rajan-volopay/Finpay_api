@@ -51,7 +51,7 @@ RSpec.describe "Users::Sessions", type: :request do
 
   describe "POST /auth/login" do
     it "logs in and returns a JWT containing the company_id" do
-      post "/auth/login", params: {
+      post "/api/v1/auth/login", params: {
         company: {
           subdomain: company.subdomain
         },
@@ -94,7 +94,7 @@ RSpec.describe "Users::Sessions", type: :request do
         "HS256"
       )
 
-      get "/auth/me", headers: {
+      get "/api/v1/auth/me", headers: {
         "Authorization" => "Bearer #{expired_token}"
       }
 
@@ -102,7 +102,7 @@ RSpec.describe "Users::Sessions", type: :request do
     end
 
     it "rejects invalid credentials" do
-      post "/auth/login", params: {
+      post "/api/v1/auth/login", params: {
         company: {
           subdomain: company.subdomain
         },
@@ -117,7 +117,7 @@ RSpec.describe "Users::Sessions", type: :request do
     end
 
     it "rejects an unknown company subdomain" do
-      post "/auth/login", params: {
+      post "/api/v1/auth/login", params: {
         company: {
           subdomain: "unknown#{SecureRandom.hex(3)}"
         },
@@ -133,7 +133,7 @@ RSpec.describe "Users::Sessions", type: :request do
 
   describe "DELETE /auth/logout" do
     it "revokes the JWT" do
-      post "/auth/login", params: {
+      post "/api/v1/auth/login", params: {
         company: {
           subdomain: company.subdomain
         },
@@ -156,7 +156,7 @@ RSpec.describe "Users::Sessions", type: :request do
       )
 
       Apartment::Tenant.switch(company.subdomain) do
-        delete "/auth/logout", headers: {
+        delete "/api/v1/auth/logout", headers: {
           "Authorization" => "Bearer #{token}"
         }
       end
@@ -167,7 +167,7 @@ RSpec.describe "Users::Sessions", type: :request do
         JwtDenylist.exists?(jti: payload["jti"])
       ).to be(true)
 
-      get "/auth/me", headers: {
+      get "/api/v1/auth/me", headers: {
         "Authorization" => "Bearer #{token}"
       }
 
@@ -175,14 +175,14 @@ RSpec.describe "Users::Sessions", type: :request do
     end
 
     it "rejects logout when the Authorization token is missing" do
-      delete "/auth/logout"
+      delete "/api/v1/auth/logout"
 
       expect(response).to have_http_status(:unauthorized)
       expect(response.parsed_body["error"]).to eq("Missing token")
     end
 
     it "rejects logout when the Authorization header is empty" do
-      delete "/auth/logout", headers: {
+      delete "/api/v1/auth/logout", headers: {
         "Authorization" => ""
       }
 
@@ -192,7 +192,7 @@ RSpec.describe "Users::Sessions", type: :request do
   end
   describe "GET /auth/login" do
     it "returns the login endpoint response" do
-      get "/auth/login"
+      get "/api/v1/auth/login"
 
       expect(response).to have_http_status(:ok)
     end

@@ -35,7 +35,7 @@ RSpec.describe "Tenant isolation", type: :request do
     it "does not let X-Company-Id override the token tenant" do
       token = auth_token_for(user_a)
 
-      get "/auth/me", headers: {
+      get "/api/v1/auth/me", headers: {
         "Authorization" => "Bearer #{token}",
         "X-Company-Id" => company_b.id.to_s
       }
@@ -56,7 +56,7 @@ RSpec.describe "Tenant isolation", type: :request do
         "HS256"
       )
 
-      get "/auth/me", headers: {
+      get "/api/v1/auth/me", headers: {
         "Authorization" => "Bearer #{invalid_token}"
       }
 
@@ -75,7 +75,7 @@ RSpec.describe "Tenant isolation", type: :request do
         "HS256"
       )
 
-      get "/auth/me", headers: {
+      get "/api/v1/auth/me", headers: {
         "Authorization" => "Bearer #{invalid_token}"
       }
 
@@ -101,7 +101,7 @@ RSpec.describe "Tenant isolation", type: :request do
         "HS256"
       )
 
-      get "/auth/me", headers: {
+      get "/api/v1/auth/me", headers: {
         "Authorization" => "Bearer #{invalid_token}"
       }
 
@@ -123,7 +123,7 @@ RSpec.describe "Tenant isolation", type: :request do
         "HS256"
       )
 
-      get "/auth/me", headers: {
+      get "/api/v1/auth/me", headers: {
         "Authorization" => "Bearer #{invalid_token}"
       }
 
@@ -145,7 +145,7 @@ RSpec.describe "Tenant isolation", type: :request do
         "HS256"
       )
 
-      get "/auth/me", headers: {
+      get "/api/v1/auth/me", headers: {
         "Authorization" => "Bearer #{mismatched_token}"
       }
 

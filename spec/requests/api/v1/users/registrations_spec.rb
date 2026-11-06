@@ -18,7 +18,7 @@ RSpec.describe "Users::Registrations", type: :request do
     end
 
     it "registers a company and its admin user" do
-      post "/auth/register", params: registration_params
+      post "/api/v1/auth/register", params: registration_params
 
       expect(response).to have_http_status(:created)
 
@@ -66,7 +66,7 @@ RSpec.describe "Users::Registrations", type: :request do
       invalid_params = registration_params.deep_dup
       invalid_params[:user][:password_confirmation] = "different_password"
 
-      post "/auth/register", params: invalid_params
+      post "/api/v1/auth/register", params: invalid_params
 
       expect(response).to have_http_status(:unprocessable_entity)
       expect(response.parsed_body).to have_key("errors")

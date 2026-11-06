@@ -1,9 +1,10 @@
+
 require "rails_helper"
 
 RSpec.describe Companies::Provision do
   describe ".call" do
     let(:name) { "Acme Corp" }
-    let(:subdomain) { "acme" }
+    let(:subdomain) { "acme#{SecureRandom.hex(4)}" }
     let(:connection) { ActiveRecord::Base.connection }
 
     after do
