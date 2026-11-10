@@ -56,7 +56,7 @@ class ReimbursementIdempotencyService < ApplicationService
           next
         end
 
-        response_body = ExpenseSerializer.new(
+        response_body = Api::V1::ExpenseSerializer.new(
           @expense
         ).serializable_hash
 

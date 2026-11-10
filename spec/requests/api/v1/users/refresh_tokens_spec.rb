@@ -61,7 +61,7 @@ RSpec.describe "Users::RefreshTokens", type: :request do
     it "rotates a valid refresh token" do
       old_record, raw_token = issue_refresh_token
 
-      post "/auth/refresh", params: {
+      post "/api/v1/auth/refresh", params: {
         refresh_token: raw_token
       }
 
@@ -87,7 +87,7 @@ RSpec.describe "Users::RefreshTokens", type: :request do
 
       old_record.update!(revoked_at: Time.current)
 
-      post "/auth/refresh", params: {
+      post "/api/v1/auth/refresh", params: {
         refresh_token: raw_token
       }
 
@@ -100,7 +100,7 @@ RSpec.describe "Users::RefreshTokens", type: :request do
 
       record.update!(user_id: -1)
 
-      post "/auth/refresh", params: {
+      post "/api/v1/auth/refresh", params: {
         refresh_token: raw_token
       }
 
@@ -113,7 +113,7 @@ RSpec.describe "Users::RefreshTokens", type: :request do
 
       record.update_column(:company_id, -1)
 
-      post "/auth/refresh", params: {
+      post "/api/v1/auth/refresh", params: {
         refresh_token: raw_token
       }
 
@@ -122,14 +122,14 @@ RSpec.describe "Users::RefreshTokens", type: :request do
     end
 
     it "rejects a missing refresh token" do
-      post "/auth/refresh", params: {}
+      post "/api/v1/auth/refresh", params: {}
 
       expect(response).to have_http_status(:unauthorized)
       expect(response.parsed_body).to have_key("error")
     end
 
     it "rejects an invalid refresh token" do
-      post "/auth/refresh", params: {
+      post "/api/v1/auth/refresh", params: {
         refresh_token: "invalid-refresh-token"
       }
 
@@ -142,7 +142,7 @@ RSpec.describe "Users::RefreshTokens", type: :request do
         expires_at: 1.day.ago
       )
 
-      post "/auth/refresh", params: {
+      post "/api/v1/auth/refresh", params: {
         refresh_token: raw_token
       }
 
@@ -154,7 +154,7 @@ RSpec.describe "Users::RefreshTokens", type: :request do
         revoked_at: Time.current
       )
 
-      post "/auth/refresh", params: {
+      post "/api/v1/auth/refresh", params: {
         refresh_token: raw_token
       }
 

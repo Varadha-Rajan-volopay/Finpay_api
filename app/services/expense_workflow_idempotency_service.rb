@@ -59,7 +59,7 @@ class ExpenseWorkflowIdempotencyService < ApplicationService
         )
 
         if result.success?
-          body = ExpenseSerializer.new(expense).serialize
+          body = Api::V1::ExpenseSerializer.new(expense).serialize
           status = :ok
         else
           body = { errors: result.errors }

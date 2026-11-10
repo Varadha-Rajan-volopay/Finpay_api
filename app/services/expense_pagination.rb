@@ -37,7 +37,7 @@ class ExpensePagination
       .per(per)
 
     {
-      data: ExpenseSerializer.new(expenses).serializable_hash,
+      data: Api::V1::ExpenseSerializer.new(expenses).serializable_hash,
       meta: {
         page: expenses.current_page,
         total_pages: expenses.total_pages
@@ -64,7 +64,7 @@ class ExpensePagination
     expenses = records.first(per)
 
     {
-      data: ExpenseSerializer.new(expenses).serializable_hash,
+      data: Api::V1::ExpenseSerializer.new(expenses).serializable_hash,
       meta: {
         per: per,
         has_next: has_next,

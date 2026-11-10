@@ -1,3 +1,4 @@
+
 require "rails_helper"
 
 RSpec.describe Category, type: :model do
@@ -12,11 +13,15 @@ RSpec.describe Category, type: :model do
     end
 
     it "requires a unique name" do
-      existing_category = create(:category, name: "Travel")
+      unique_category_name = "Travel-#{SecureRandom.hex(4)}"
+
+      existing_category = create(:category, name: unique_category_name)
       duplicate_category = build(:category, name: existing_category.name)
 
       expect(duplicate_category).not_to be_valid
       expect(duplicate_category.errors[:name]).to include("has already been taken")
+    ensure
+      Category.find_by(name: unique_category_name)&.delete
     end
   end
 
