@@ -71,16 +71,7 @@ class ExpenseWorkflowService < ApplicationService
             activity_log.created_at.iso8601(6)
           )
         end
-        ActiveRecord.after_all_transactions_commit do
-          AuditLogWorker.perform_async(
-            @expense.user.company_id,
-            @expense.id,
-            @actor.id,
-            @action.to_s,
-            from_state,
-            to_state
-          )
-        end
+
 
         result = Result.new(
           success: true,

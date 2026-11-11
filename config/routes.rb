@@ -21,6 +21,12 @@ Rails.application.routes.draw do
          to: "api/v1/users/registrations#create",
          as: :user_registration
 
+    post "api/v1/auth/register/admin",
+         to: "api/v1/users/admin_registrations#create"
+
+    post "api/v1/auth/register/user",
+         to: "api/v1/users/user_registrations#create"
+
     post "api/v1/auth/refresh",
          to: "api/v1/users/refresh_tokens#create"
   end
@@ -29,6 +35,8 @@ Rails.application.routes.draw do
     namespace :v1 do
       get "auth/me", to: "users/me#show"
 
+      resources :categories, only: %i[index create]
+
       resources :expenses, only: %i[index show create update destroy] do
         member do
           post :approve
@@ -36,6 +44,7 @@ Rails.application.routes.draw do
           post :reimburse
           post :archive
         end
+        resources :receipts, only: %i[create show]
       end
     end
   end
