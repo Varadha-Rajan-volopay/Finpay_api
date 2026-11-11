@@ -109,12 +109,14 @@ RSpec.describe "Database constraints", type: :model do
 
   describe "categories" do
     it "rejects duplicate names" do
-      create(:category, name: "Travel")
+      category_name = "Database Constraint Test Category"
+
+      create(:category, name: category_name)
 
       expect_constraint_violation(ActiveRecord::RecordNotUnique) do
         Category.insert!(
           {
-            name: "Travel",
+            name: category_name,
             created_at: Time.current,
             updated_at: Time.current
           }

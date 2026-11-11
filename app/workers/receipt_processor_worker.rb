@@ -29,13 +29,13 @@ class ReceiptProcessorWorker
 
       next if receipt.ocr_status == "done"
 
-      # Commit the processing status before starting OCR.
+
       receipt.update!(ocr_status: "processing")
 
-      # OCR runs outside the database lock.
+
       fake_ocr_text = "Fake OCR output for #{receipt.file_name}"
 
-      # Lock only while saving the OCR result.
+
       receipt.with_lock do
         next if receipt.ocr_status == "done"
 

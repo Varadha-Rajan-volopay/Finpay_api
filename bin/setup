@@ -18,7 +18,8 @@ FileUtils.chdir APP_ROOT do
   system! "docker", "compose", "up", "-d", "--wait"
 
   puts "\n== Preparing database =="
-  system! RbConfig.ruby, "bin/rails", "db:prepare"  
+  system! RbConfig.ruby, "bin/rails", "db:prepare"
+  system! RbConfig.ruby, "bin/rails", "db:seed"
   system! RbConfig.ruby, "bin/rails", "db:reset" if ARGV.include?("--reset")
 
   puts "\n== Clearing logs and temporary files =="
@@ -27,6 +28,11 @@ FileUtils.chdir APP_ROOT do
   unless ARGV.include?("--skip-server")
     puts "\n== Starting development server =="
     STDOUT.flush
-    exec "bin/dev"
+
+    if Gem.win_platform?
+      system! RbConfig.ruby, "bin/rails", "server"
+    else
+      exec "bin/dev"
+    end
   end
 end

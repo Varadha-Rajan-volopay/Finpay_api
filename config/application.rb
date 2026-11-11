@@ -1,6 +1,7 @@
 require_relative "boot"
 
 require "rails/all"
+require "rack/attack"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -10,6 +11,8 @@ module FinpayApi
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
+
+    config.middleware.use Rack::Attack
 
     config.x.expense_overdue_days = ENV.fetch("EXPENSE_OVERDUE_DAYS", 7).to_i
 

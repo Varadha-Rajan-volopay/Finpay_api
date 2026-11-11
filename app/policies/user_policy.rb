@@ -15,6 +15,10 @@ class UserPolicy < ApplicationPolicy
     same_company? && user.admin?
   end
 
+  def create?
+    user.present? && user.admin?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
