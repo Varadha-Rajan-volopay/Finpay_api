@@ -75,7 +75,7 @@ gem "sidekiq-cron", "~> 2.4"
 gem "rack-attack", "~> 6.8"
 gem "rack-cors", "~> 3.0"
 
-gem "redis", "~> 5.4"
+gem "redis", "~> 6.0"
 
 gem "rswag-api", "~> 2.17"
 gem "rswag-ui", "~> 2.17"
